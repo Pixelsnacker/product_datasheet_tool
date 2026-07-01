@@ -1,0 +1,9 @@
+{
+  "query": "DROP TABLE IF EXISTS parts; DROP TABLE IF EXISTS columnTemplates; DROP TABLE IF EXISTS products; DROP TABLE IF EXISTS templates;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute DROP TABLE IF EXISTS parts; DROP TABLE IF EXISTS columnTemplates; DROP TABLE IF EXISTS products; DROP TABLE IF EXISTS templates;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1572
+}

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, productName, technicalDataColumns, columnWidths FROM products WHERE id = 150001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute SELECT id, productName, technicalDataColumns, columnWidths FROM products WHERE id = 150001;",
+  "rows": [
+    {
+      "id": "150001",
+      "productName": "Deckelfass 220 L RST",
+      "technicalDataColumns": "[\"RST\"]",
+      "columnWidths": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tproductName\ttechnicalDataColumns\tcolumnWidths\n150001\tDeckelfass 220 L RST\t[\"RST\"]\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

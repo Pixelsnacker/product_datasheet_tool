@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE products ADD COLUMN language varchar(5) NOT NULL DEFAULT 'de';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute ALTER TABLE products ADD COLUMN language varchar(5) NOT NULL DEFAULT 'de';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 507
+}

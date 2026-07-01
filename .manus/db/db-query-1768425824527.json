@@ -1,0 +1,27 @@
+{
+  "query": "SELECT * FROM products LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute SELECT * FROM products LIMIT 1;",
+  "rows": [
+    {
+      "id": "150001",
+      "userId": "1",
+      "productName": "Deckelfass 220 L RST",
+      "productSubtitle": "Zulassung für gefährliche Flüssigkeiten",
+      "industryCategories": "NULL",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/n6XisdfiUmoqasRoKN33Lg/products/1/u_UiXbuF_GzJy-VXpBU08.png",
+      "descriptionSections": "[{\"items\": [\"Polyethylen mit hoher Dichte und UV-Stabilisierung für langlebige Outdoor-Anwendungen\"], \"title\": \"Material\"}, {\"items\": [\"individuelle Einfärbung\"], \"title\": \"Farbe\"}, {\"items\": [\"runde bauchige Form (R)\", \"palettengerechte Form (P)\", \"Standdeckel mit Moosgummidichtun (ST)\"], \"title\": \"Ausführung\"}]",
+      "technicalData": "NULL",
+      "documentNumber": "NULL",
+      "createdAt": "2026-01-14 14:52:32",
+      "updatedAt": "2026-01-14 19:48:52",
+      "imageScale": "100",
+      "technicalDataColumns": "[\"RST\"]",
+      "columnWidths": "NULL",
+      "technicalDataRows": "[{\"label\": \"Typ\", \"values\": [\"\"]}, {\"label\": \"Nennvolumen [l]\", \"values\": [\"\"]}, {\"label\": \"Länge [mm]\", \"values\": [\"\"]}, {\"label\": \"Breite [mm]\", \"values\": [\"\"]}, {\"label\": \"Gesamthöhe [mm]\", \"values\": [\"\"]}]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tproductName\tproductSubtitle\tindustryCategories\timageUrl\tdescriptionSections\ttechnicalData\tdocumentNumber\tcreatedAt\tupdatedAt\timageScale\ttechnicalDataColumns\tcolumnWidths\ttechnicalDataRows\n150001\t1\tDeckelfass 220 L RST\tZulassung für gefährliche Flüssigkeiten\tNULL\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/n6XisdfiUmoqasRoKN33Lg/products/1/u_UiXbuF_GzJy-VXpBU08.png\t[{\"items\": [\"Polyethylen mit hoher Dichte und UV-Stabilisierung für langlebige Outdoor-Anwendungen\"], \"title\": \"Material\"}, {\"items\": [\"individuelle Einfärbung\"], \"title\": \"Farbe\"}, {\"items\": [\"runde bauchige Form (R)\", \"palettengerechte Form (P)\", \"Standdeckel mit Moosgummidichtun (ST)\"], \"title\": \"Ausführung\"}]\tNULL\tNULL\t2026-01-14 14:52:32\t2026-01-14 19:48:52\t100\t[\"RST\"]\tNULL\t[{\"label\": \"Typ\", \"values\": [\"\"]}, {\"label\": \"Nennvolumen [l]\", \"values\": [\"\"]}, {\"label\": \"Länge [mm]\", \"values\": [\"\"]}, {\"label\": \"Breite [mm]\", \"values\": [\"\"]}, {\"label\": \"Gesamthöhe [mm]\", \"values\": [\"\"]}]\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

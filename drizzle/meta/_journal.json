@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1764963490094,
+      "tag": "0000_vengeful_betty_brant",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1764966021476,
+      "tag": "0001_worthless_clea",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1767991830446,
+      "tag": "0002_fat_stark_industries",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1767995009602,
+      "tag": "0003_same_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1767995123628,
+      "tag": "0004_lame_changeling",
+      "breakpoints": true
+    }
+  ]
+}
