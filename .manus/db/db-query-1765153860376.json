@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE IF NOT EXISTS pdfSettings (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL UNIQUE,\n  marginTop INT DEFAULT 10,\n  marginBottom INT DEFAULT 10,\n  marginLeft INT DEFAULT 10,\n  marginRight INT DEFAULT 10,\n  fontSizeTitle INT DEFAULT 18,\n  fontSizeSubtitle INT DEFAULT 14,\n  fontSizeHeading INT DEFAULT 9,\n  fontSizeText INT DEFAULT 8,\n  fontSizeTable INT DEFAULT 7,\n  fontSizeFooter INT DEFAULT 6,\n  sectionSpacing INT DEFAULT 8,\n  lineHeight INT DEFAULT 130,\n  maxImageHeight INT DEFAULT 180,\n  logoHeight INT DEFAULT 32,\n  tableRowPadding INT DEFAULT 4,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute CREATE TABLE IF NOT EXISTS pdfSettings (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  userId INT NOT NULL UNIQUE,\n  marginTop INT DEFAULT 10,\n  marginBottom INT DEFAULT 10,\n  marginLeft INT DEFAULT 10,\n  marginRight INT DEFAULT 10,\n  fontSizeTitle INT DEFAULT 18,\n  fontSizeSubtitle INT DEFAULT 14,\n  fontSizeHeading INT DEFAULT 9,\n  fontSizeText INT DEFAULT 8,\n  fontSizeTable INT DEFAULT 7,\n  fontSizeFooter INT DEFAULT 6,\n  sectionSpacing INT DEFAULT 8,\n  lineHeight INT DEFAULT 130,\n  maxImageHeight INT DEFAULT 180,\n  logoHeight INT DEFAULT 32,\n  tableRowPadding INT DEFAULT 4,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 367
-}

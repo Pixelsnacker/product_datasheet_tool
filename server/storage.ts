@@ -1,70 +1,65 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+// S3 / Cloudflare R2 storage helpers.
+//
+// Uploads objects to an S3-compatible bucket and returns a URL that can be
+// rendered directly in <img src>. When S3_PUBLIC_URL_BASE is configured the
+// returned URL is the stable public object URL; otherwise a long-lived
+// presigned GET URL is generated as a fallback.
+//
+// Required env: S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY
+// Optional env: S3_REGION, S3_ENDPOINT (R2/MinIO), S3_PUBLIC_URL_BASE,
+//               S3_FORCE_PATH_STYLE
 
-import { ENV } from './_core/env';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { ENV } from "./_core/env";
 
-type StorageConfig = { baseUrl: string; apiKey: string };
+const PRESIGN_EXPIRES_SECONDS = 60 * 60 * 24 * 7; // 7 days (max allowed)
 
-function getStorageConfig(): StorageConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
+let _client: S3Client | null = null;
 
-  if (!baseUrl || !apiKey) {
+function getClient(): S3Client {
+  if (!ENV.s3Bucket) {
+    throw new Error("Storage is not configured: set S3_BUCKET");
+  }
+  if (!ENV.s3AccessKeyId || !ENV.s3SecretAccessKey) {
     throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
+      "Storage credentials missing: set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY"
     );
   }
 
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
-}
-
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
-  const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
-  url.searchParams.set("path", normalizeKey(relKey));
-  return url;
-}
-
-async function buildDownloadUrl(
-  baseUrl: string,
-  relKey: string,
-  apiKey: string
-): Promise<string> {
-  const downloadApiUrl = new URL(
-    "v1/storage/downloadUrl",
-    ensureTrailingSlash(baseUrl)
-  );
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
-  });
-  return (await response.json()).url;
-}
-
-function ensureTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value : `${value}/`;
+  if (!_client) {
+    _client = new S3Client({
+      region: ENV.s3Region || "auto",
+      ...(ENV.s3Endpoint ? { endpoint: ENV.s3Endpoint } : {}),
+      forcePathStyle: ENV.s3ForcePathStyle,
+      credentials: {
+        accessKeyId: ENV.s3AccessKeyId,
+        secretAccessKey: ENV.s3SecretAccessKey,
+      },
+    });
+  }
+  return _client;
 }
 
 function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
-function toFormData(
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  fileName: string
-): FormData {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, fileName || "file");
-  return form;
-}
-
-function buildAuthHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
+async function resolveUrl(key: string): Promise<string> {
+  // Prefer a stable public URL when a public base is configured.
+  if (ENV.s3PublicUrlBase) {
+    const base = ENV.s3PublicUrlBase.replace(/\/+$/, "");
+    return `${base}/${key}`;
+  }
+  // Fallback: presigned GET URL (expires after PRESIGN_EXPIRES_SECONDS).
+  const command = new GetObjectCommand({ Bucket: ENV.s3Bucket, Key: key });
+  return getSignedUrl(getClient(), command, {
+    expiresIn: PRESIGN_EXPIRES_SECONDS,
+  });
 }
 
 export async function storagePut(
@@ -72,31 +67,26 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+  const client = getClient();
   const key = normalizeKey(relKey);
-  const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildAuthHeaders(apiKey),
-    body: formData,
-  });
+  const body =
+    typeof data === "string" ? Buffer.from(data, "utf-8") : Buffer.from(data);
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-    );
-  }
-  const url = (await response.json()).url;
-  return { key, url };
+  await client.send(
+    new PutObjectCommand({
+      Bucket: ENV.s3Bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    })
+  );
+
+  return { key, url: await resolveUrl(key) };
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
-  const { baseUrl, apiKey } = getStorageConfig();
+export async function storageGet(
+  relKey: string
+): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  return {
-    key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
-  };
+  return { key, url: await resolveUrl(key) };
 }

@@ -1,9 +1,0 @@
-{
-  "query": "\nALTER TABLE templates \nADD COLUMN category VARCHAR(50),\nADD COLUMN isSystemTemplate BOOLEAN NOT NULL DEFAULT FALSE,\nADD COLUMN descriptionSections JSON,\nADD COLUMN technicalDataColumns JSON,\nADD COLUMN technicalDataRows JSON;\n",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.b1a4b4d6902a --database n6XisdfiUmoqasRoKN33Lg --execute \nALTER TABLE templates \nADD COLUMN category VARCHAR(50),\nADD COLUMN isSystemTemplate BOOLEAN NOT NULL DEFAULT FALSE,\nADD COLUMN descriptionSections JSON,\nADD COLUMN technicalDataColumns JSON,\nADD COLUMN technicalDataRows JSON;\n",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1455
-}
