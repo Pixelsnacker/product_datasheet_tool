@@ -7,6 +7,9 @@ dist/
 build/
 *.dist
 
+# Local uploaded files (product images)
+/uploads/
+
 # Environment variables
 .env
 .env.local

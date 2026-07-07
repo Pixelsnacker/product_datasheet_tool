@@ -1,92 +1,54 @@
-// S3 / Cloudflare R2 storage helpers.
+// Local-filesystem storage helpers (Railway Volume / local disk).
 //
-// Uploads objects to an S3-compatible bucket and returns a URL that can be
-// rendered directly in <img src>. When S3_PUBLIC_URL_BASE is configured the
-// returned URL is the stable public object URL; otherwise a long-lived
-// presigned GET URL is generated as a fallback.
+// Uploaded files are written under UPLOAD_DIR and served by the app itself at
+// /uploads/<key> (see server/_core/index.ts). storagePut returns an absolute
+// URL when PUBLIC_BASE_URL is set — needed so the server-side PDF generator
+// (Puppeteer) and same-origin canvas export can load the image — and falls
+// back to a relative /uploads/<key> path otherwise.
 //
-// Required env: S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY
-// Optional env: S3_REGION, S3_ENDPOINT (R2/MinIO), S3_PUBLIC_URL_BASE,
-//               S3_FORCE_PATH_STYLE
+// Env: UPLOAD_DIR (default ./uploads), PUBLIC_BASE_URL (e.g. https://app.example)
 
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { promises as fs } from "fs";
+import path from "path";
 import { ENV } from "./_core/env";
 
-const PRESIGN_EXPIRES_SECONDS = 60 * 60 * 24 * 7; // 7 days (max allowed)
-
-let _client: S3Client | null = null;
-
-function getClient(): S3Client {
-  if (!ENV.s3Bucket) {
-    throw new Error("Storage is not configured: set S3_BUCKET");
-  }
-  if (!ENV.s3AccessKeyId || !ENV.s3SecretAccessKey) {
-    throw new Error(
-      "Storage credentials missing: set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY"
-    );
-  }
-
-  if (!_client) {
-    _client = new S3Client({
-      region: ENV.s3Region || "auto",
-      ...(ENV.s3Endpoint ? { endpoint: ENV.s3Endpoint } : {}),
-      forcePathStyle: ENV.s3ForcePathStyle,
-      credentials: {
-        accessKeyId: ENV.s3AccessKeyId,
-        secretAccessKey: ENV.s3SecretAccessKey,
-      },
-    });
-  }
-  return _client;
+export function uploadRoot(): string {
+  return path.resolve(ENV.uploadDir || "./uploads");
 }
 
 function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+  // Strip leading slashes and any parent-dir segments to prevent path escapes.
+  return relKey
+    .replace(/^\/+/, "")
+    .split("/")
+    .filter(part => part && part !== "." && part !== "..")
+    .join("/");
 }
 
-async function resolveUrl(key: string): Promise<string> {
-  // Prefer a stable public URL when a public base is configured.
-  if (ENV.s3PublicUrlBase) {
-    const base = ENV.s3PublicUrlBase.replace(/\/+$/, "");
-    return `${base}/${key}`;
+function resolveUrl(key: string): string {
+  if (ENV.publicBaseUrl) {
+    return `${ENV.publicBaseUrl.replace(/\/+$/, "")}/uploads/${key}`;
   }
-  // Fallback: presigned GET URL (expires after PRESIGN_EXPIRES_SECONDS).
-  const command = new GetObjectCommand({ Bucket: ENV.s3Bucket, Key: key });
-  return getSignedUrl(getClient(), command, {
-    expiresIn: PRESIGN_EXPIRES_SECONDS,
-  });
+  return `/uploads/${key}`;
 }
 
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream"
+  _contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const client = getClient();
   const key = normalizeKey(relKey);
+  const filePath = path.join(uploadRoot(), key);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   const body =
     typeof data === "string" ? Buffer.from(data, "utf-8") : Buffer.from(data);
-
-  await client.send(
-    new PutObjectCommand({
-      Bucket: ENV.s3Bucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    })
-  );
-
-  return { key, url: await resolveUrl(key) };
+  await fs.writeFile(filePath, body);
+  return { key, url: resolveUrl(key) };
 }
 
 export async function storageGet(
   relKey: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  return { key, url: await resolveUrl(key) };
+  return { key, url: resolveUrl(key) };
 }

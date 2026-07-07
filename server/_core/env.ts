@@ -7,12 +7,9 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   teamAccessCode: process.env.TEAM_ACCESS_CODE ?? "",
 
-  // S3 / Cloudflare R2 object storage (used for image uploads)
-  s3Bucket: process.env.S3_BUCKET ?? "",
-  s3Region: process.env.S3_REGION ?? "",
-  s3Endpoint: process.env.S3_ENDPOINT ?? "",
-  s3AccessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
-  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
-  s3PublicUrlBase: process.env.S3_PUBLIC_URL_BASE ?? "",
-  s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+  // Local-filesystem storage for image uploads (Railway Volume / local disk).
+  uploadDir: process.env.UPLOAD_DIR ?? "./uploads",
+  // Absolute base URL of the app, used to build absolute image URLs so the PDF
+  // generator can load them (e.g. https://your-app.up.railway.app).
+  publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
 };

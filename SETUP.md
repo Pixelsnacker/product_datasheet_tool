@@ -74,11 +74,11 @@ Open the app, use **Team login** and enter your `TEAM_ACCESS_CODE`.
 1. Create a new Railway project from the GitHub repo.
 2. Add the **MySQL** plugin; copy its connection URL into `DATABASE_URL`.
 3. Add all other variables from `.env.example` as service variables.
-4. Storage: create a **Cloudflare R2** bucket (or AWS S3):
-   - `S3_ENDPOINT = https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
-   - `S3_REGION = auto`
-   - `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
-   - Enable public access (or a custom domain) and set `S3_PUBLIC_URL_BASE`.
+4. Storage: attach a **Volume** to the service (Railway → service → Volumes),
+   mounted at e.g. `/data`, then set:
+   - `UPLOAD_DIR = /data/uploads`
+   - `PUBLIC_BASE_URL = https://<your-service>.up.railway.app`
+     (the app's public domain — required so PDF export can load images)
 5. Build command: `pnpm build` · Start command: `pnpm start`.
 6. After the first deploy, run once (Railway shell or a one-off):
    `pnpm db:migrate && pnpm seed:owner`.
@@ -94,8 +94,9 @@ Open the app, use **Team login** and enter your `TEAM_ACCESS_CODE`.
 
 ## What was removed from the Manus integration
 
-- **Storage** rewritten from the Manus "forge" proxy to native S3/R2
-  (`server/storage.ts`).
+- **Storage** rewritten from the Manus "forge" proxy to the local filesystem
+  (`server/storage.ts`), served by the app at `/uploads`. On Railway this is
+  backed by a persistent Volume.
 - Dead Manus SDK modules deleted: `server/_core/{llm,imageGeneration,
   notification,voiceTranscription,dataApi,map}.ts` (none were imported).
 - `vite-plugin-manus-runtime` removed from `vite.config.ts` and dependencies;
