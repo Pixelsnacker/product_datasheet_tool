@@ -7,6 +7,32 @@ import superjson from "superjson";
 import App from "./App";
 import "./index.css";
 
+// Make React resilient to browser page translation (Google Translate, Chrome
+// "translate this page", etc.). Those tools mutate the DOM out from under React,
+// which otherwise throws "removeChild"/"insertBefore" NotFoundError and crashes
+// the whole app. Guarding these two Node methods lets translation coexist.
+if (typeof Node === "function" && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
+    if (child.parentNode !== this) {
+      return child;
+    }
+    return originalRemoveChild.call(this, child) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(
+    this: Node,
+    newNode: T,
+    referenceNode: Node | null
+  ): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      return newNode;
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T;
+  };
+}
+
 const queryClient = new QueryClient();
 
 queryClient.getQueryCache().subscribe(event => {
