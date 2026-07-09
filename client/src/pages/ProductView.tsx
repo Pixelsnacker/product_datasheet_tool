@@ -5,7 +5,7 @@ import { Link, useParams } from "wouter";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { jsPDF } from 'jspdf';
+import { buildDatasheetPdf, type DatasheetProduct } from "@/lib/datasheetPdf";
 // Fixed footer data for all product datasheets
 const FIXED_FOOTER: {
   companyName: string;
@@ -83,26 +83,29 @@ export default function ProductView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Helper function to load image as base64 via proxy to bypass CORS
-  const loadImageAsBase64 = (url: string): Promise<string> => {
+  // Load an image via the CORS proxy and return its data URL + natural size.
+  const loadImage = (
+    url: string
+  ): Promise<{ dataUrl: string; width: number; height: number }> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      // Kein crossOrigin - CloudFront sendet keine CORS-Header
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/jpeg', 0.9));
-        } else {
+        if (!ctx) {
           reject(new Error('Could not get canvas context'));
+          return;
         }
+        ctx.drawImage(img, 0, 0);
+        resolve({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+          width: img.width,
+          height: img.height,
+        });
       };
       img.onerror = () => reject(new Error('Failed to load image'));
-      
-      // Use proxy for external URLs (CloudFront/S3) to bypass CORS
       if (url.startsWith('http') && !url.startsWith(window.location.origin)) {
         img.src = `/api/image-proxy?url=${encodeURIComponent(url)}`;
       } else {
@@ -119,351 +122,23 @@ export default function ProductView() {
     
     setIsGeneratingPdf(true);
     try {
-      // Create PDF with A4 dimensions
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
+      const [logo, productImage] = await Promise.all([
+        loadImage(FIXED_FOOTER.logoUrl).catch(() => null),
+        product.imageUrl
+          ? loadImage(product.imageUrl).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+      const pdf = buildDatasheetPdf({
+        product: product as unknown as DatasheetProduct,
+        footer: FIXED_FOOTER,
+        logo,
+        productImage,
       });
-      
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 10;
-      const contentWidth = pageWidth - 2 * margin;
-      
-      let y = margin;
-      
-      // Title
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(80, 80, 80);
-      const productName = product.productName || "Unbenanntes Produkt";
-      const titleWidth = pageWidth - 2 * margin - 60; // Leave space for logo
-      const titleLines = pdf.splitTextToSize(productName, titleWidth);
-      pdf.text(titleLines, margin, y + 7);
-      const titleBottomY = y + 7;
-      y += 10;
-      
-      // Subtitle
-      let subtitleBottomY = y + 5;
-      if (product.productSubtitle) {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(product.productSubtitle, margin, y + 5);
-        subtitleBottomY = y + 5;
-        y += 8;
-      }
-      
-      // Logo oben rechts - Unterkante bündig mit Untertitel-Unterkante
-      if (FIXED_FOOTER.logoUrl) {
-        try {
-          const logoData = await loadImageAsBase64(FIXED_FOOTER.logoUrl);
-          const img = new Image();
-          img.src = logoData;
-          await new Promise((resolve) => { img.onload = resolve; });
-          
-          const logoHeight = 8; // Logo-Höhe in mm (kleiner, wie in der Vorschau)
-          const logoWidth = (img.width / img.height) * logoHeight;
-          const logoX = pageWidth - margin - logoWidth;
-          const logoY = subtitleBottomY - logoHeight; // Unterkante bündig
-          
-          pdf.addImage(logoData, 'JPEG', logoX, logoY, logoWidth, logoHeight);
-        } catch (error) {
-          console.log('Could not load logo:', error);
-        }
-      }
-      
-      // Divider line
-      y += 3;
-      pdf.setDrawColor(200, 200, 200);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 8;
-      
-      // Main content area - Image on left, descriptions on right
-      const imageWidth = contentWidth * 0.45;
-      const descWidth = contentWidth * 0.5;
-      const startY = y;
-      
-      // Try to add product image - Seitenverhältnis beibehalten mit imageScale
-      const imageScale = product.imageScale || 100;
-      const scaleFactor = imageScale / 100;
-      const baseMaxImgWidth = 45; // Basis-Breite 45mm bei 100%
-      const baseMaxImgHeight = 60; // Basis-Höhe 60mm bei 100%
-      const maxImgWidth = baseMaxImgWidth * scaleFactor;
-      const maxImgHeight = baseMaxImgHeight * scaleFactor;
-      let imgWidth = maxImgWidth;
-      let imgHeight = maxImgHeight;
-      
-      if (product.imageUrl) {
-        try {
-          const imgData = await loadImageAsBase64(product.imageUrl);
-          
-          // Originale Bildgröße ermitteln um Seitenverhältnis zu berechnen
-          const img = new Image();
-          img.src = imgData;
-          await new Promise((resolve) => { img.onload = resolve; });
-          
-          const aspectRatio = img.width / img.height;
-          
-          // Seitenverhältnis beibehalten, innerhalb der max. Grenzen
-          if (aspectRatio > maxImgWidth / maxImgHeight) {
-            // Bild ist breiter - Breite begrenzt
-            imgWidth = maxImgWidth;
-            imgHeight = maxImgWidth / aspectRatio;
-          } else {
-            // Bild ist höher - Höhe begrenzt
-            imgHeight = maxImgHeight;
-            imgWidth = maxImgHeight * aspectRatio;
-          }
-          
-          pdf.addImage(imgData, 'JPEG', margin, y, imgWidth, imgHeight);
-        } catch (imgError) {
-          console.log('Could not load product image:', imgError);
-        }
-      }
-      
-      // Description sections on the right - FESTE Position, bündig unter dem S des Logos
-      let descY = startY;
-      // Textblock beginnt bündig unter dem "S" des Siepe-Logos
-      const descX = pageWidth - margin - 45; // Bündig unter dem Logo-Anfang (ca. 155mm von links)
-      const descMaxWidth = 45 - 5; // Maximale Textbreite: 40mm (Logo-Breite minus Rand)
-      
-      const descriptionSections: DescriptionSection[] = Array.isArray(product.descriptionSections) 
-        ? (product.descriptionSections as DescriptionSection[]).filter(s => s && typeof s === 'object')
-        : [];
-      
-      for (const section of descriptionSections) {
-        if (!section.title && (!section.items || section.items.length === 0)) continue;
-        
-        if (section.title) {
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(120, 120, 120);
-          pdf.text(section.title, descX, descY);
-          descY += 4;
-        }
-        
-        const items = Array.isArray(section.items) ? section.items.filter(i => i && i.trim()) : [];
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(60, 60, 60);
-        
-        for (const item of items) {
-          // Implement hanging indent for multi-line items
-          const bulletWidth = 3; // Width reserved for bullet point
-          const textX = descX + bulletWidth; // Text starts after bullet
-          const maxWidth = descMaxWidth - bulletWidth; // Available width for text
-          
-          // Handle manual line breaks (\n) in the text
-          const manualLines = item.split('\n');
-          
-          // Draw bullet point only once at the start
-          pdf.text('•', descX, descY);
-          
-          for (let lineIdx = 0; lineIdx < manualLines.length; lineIdx++) {
-            const linePart = manualLines[lineIdx];
-            // Split each manual line to fit available width
-            const wrappedLines = pdf.splitTextToSize(linePart, maxWidth);
-            
-            for (let i = 0; i < wrappedLines.length; i++) {
-              pdf.text(wrappedLines[i], textX, descY);
-              descY += 4;
-            }
-          }
-        }
-        descY += 3;
-      }
-      
-      // More space before technical data section (for 10 rows minimum)
-      // Stelle sicher dass die Tabelle unter dem Bild beginnt (Bild ist 60mm hoch)
-      y = Math.max(startY + imgHeight + 10, descY + 10);
-      
-      // Technical Data Table
-      const technicalDataColumns: string[] = Array.isArray(product.technicalDataColumns) 
-        ? product.technicalDataColumns 
-        : [];
-      
-      const technicalDataRows: TechnicalDataRow[] = Array.isArray(product.technicalDataRows) 
-        ? (product.technicalDataRows as TechnicalDataRow[]).filter(row => row && typeof row === 'object')
-        : [];
-      
-      if (technicalDataRows.length > 0) {
-        // Section title
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(120, 120, 120);
-        pdf.text('Technische Daten', margin, y);
-        y += 3;
-        
-        // Divider
-        pdf.setDrawColor(200, 200, 200);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, y, pageWidth - margin, y);
-        y += 4;
-        
-        // Calculate column widths
-        const numCols = technicalDataColumns.length + 1;
-        const labelColWidth = contentWidth * 0.35;
-        
-        // Use custom column widths if available, otherwise equal distribution
-        const hasCustomWidths = product.columnWidths && Array.isArray(product.columnWidths) && product.columnWidths.length === technicalDataColumns.length;
-        const dataColWidths: number[] = [];
-        
-        if (hasCustomWidths) {
-          // Convert percentages to mm, using remaining width after label column
-          const remainingWidth = contentWidth - labelColWidth;
-          const totalPercent = (product.columnWidths as number[]).reduce((sum, w) => sum + w, 0);
-          for (const widthPercent of (product.columnWidths as number[])) {
-            dataColWidths.push((widthPercent / totalPercent) * remainingWidth);
-          }
-        } else {
-          // Equal distribution
-          const equalWidth = (contentWidth - labelColWidth) / Math.max(technicalDataColumns.length, 1);
-          for (let i = 0; i < technicalDataColumns.length; i++) {
-            dataColWidths.push(equalWidth);
-          }
-        }
-        
-        // Header row
-        if (technicalDataColumns.length > 0) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(80, 80, 80);
-          
-          let colX = margin + labelColWidth;
-          for (let i = 0; i < technicalDataColumns.length; i++) {
-            const col = technicalDataColumns[i];
-            const colWidth = dataColWidths[i];
-            pdf.text(col || '', colX + colWidth / 2, y, { align: 'center' });
-            colX += colWidth;
-          }
-          y += 5;
-        }
-        
-        // Data rows with alternating colors
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        
-        for (let i = 0; i < technicalDataRows.length; i++) {
-          const row = technicalDataRows[i];
-          if (!row.label || !row.label.trim()) continue;
-          
-          const rowHeight = 5;
-          
-          // Alternating background
-          if (i % 2 === 0) {
-            pdf.setFillColor(245, 245, 245);
-            pdf.rect(margin, y - 3.5, contentWidth, rowHeight, 'F');
-          }
-          
-          // Label
-          pdf.setTextColor(60, 60, 60);
-          pdf.text(row.label, margin + 2, y);
-          
-          // Values - use values.length if no columns defined
-          const values = Array.isArray(row.values) ? row.values : [];
-          const numValueCols = Math.max(technicalDataColumns.length, values.length);
-          let colX = margin + labelColWidth;
-          
-          // Calculate column width for values if no columns defined
-          const valueColWidth = numValueCols > 0 ? (contentWidth - labelColWidth) / numValueCols : 0;
-          
-          for (let j = 0; j < numValueCols; j++) {
-            const value = values[j] || '-';
-            const colWidth = dataColWidths[j] || valueColWidth;
-            pdf.text(value, colX + colWidth / 2, y, { align: 'center' });
-            colX += colWidth;
-          }
-          
-          y += rowHeight;
-        }
-        y += 5;
-      }
-      
-      // Footer note - use fixed data
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(120, 120, 120);
-      
-      // Divider
-      pdf.setDrawColor(200, 200, 200);
-      pdf.line(margin, y, pageWidth - margin, y);
-      y += 4;
-      
-      const lines = pdf.splitTextToSize(FIXED_FOOTER.footerNote, contentWidth);
-      pdf.text(lines, margin, y);
-      y += lines.length * 3 + 3;
-      
-      // Company footer at bottom
-      const footerY = pageHeight - 25;
-      
-      // Divider
-      pdf.setDrawColor(200, 200, 200);
-      pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-      
-      let footerX = margin;
-      
-      // Company info - use fixed data
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(60, 60, 60);
-      pdf.text(FIXED_FOOTER.companyName, footerX, footerY);
-      
-      pdf.setFont('helvetica', 'normal');
-      let infoY = footerY + 3;
-      pdf.text(FIXED_FOOTER.companyWebsite, footerX, infoY);
-      infoY += 3;
-      pdf.text(FIXED_FOOTER.companyEmail, footerX, infoY);
-      footerX += 40;
-      
-      // Locations - use fixed data
-      for (const loc of FIXED_FOOTER.locations) {
-        if (!loc.locationName && !loc.street && !loc.zipCity && !loc.phone) continue;
-        
-        // Vertical divider
-        pdf.setDrawColor(180, 180, 180);
-        pdf.line(footerX, footerY - 2, footerX, footerY + 10);
-        footerX += 3;
-        
-        pdf.setFontSize(8);
-        let locY = footerY;
-        
-        if (loc.locationName) {
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(loc.locationName, footerX, locY);
-          locY += 3;
-        }
-        
-        pdf.setFont('helvetica', 'normal');
-        if (loc.street) {
-          pdf.text(loc.street, footerX, locY);
-          locY += 3;
-        }
-        if (loc.zipCity) {
-          pdf.text(loc.zipCity, footerX, locY);
-          locY += 3;
-        }
-        if (loc.phone) {
-          pdf.text('Tel. ' + loc.phone, footerX, locY);
-        }
-        
-        footerX += 35;
-      }
-      
-      
-      // Document number
-      if (product.documentNumber) {
-        pdf.setFontSize(7);
-        pdf.setTextColor(150, 150, 150);
-        pdf.text(product.documentNumber, margin, pageHeight - margin);
-      }
-      
-      // Save PDF
-      const filename = `${productName.replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '_')}.pdf`;
+
+      const filename = `${(product.productName || "Unbenanntes Produkt").replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '_')}.pdf`;
       pdf.save(filename);
-      
+
       toast.success("PDF heruntergeladen!");
     } catch (error) {
       console.error('PDF generation error:', error);
