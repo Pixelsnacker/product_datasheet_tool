@@ -86,16 +86,17 @@ export default function DatasheetPreview({
         </div>
 
         {/* Main Content: Image + Description */}
+        {/* Fixed-height image zone so scaling the image never moves the table. */}
         <div className="flex gap-6 mb-8">
           {/* Product Image */}
-          <div className="w-1/2 flex items-start justify-center">
+          <div className="w-1/2 flex items-start justify-center" style={{ height: '255px' }}>
             {imageUrl ? (
-              <img 
-                src={imageUrl} 
+              <img
+                src={imageUrl}
                 alt={productName || "Produkt"}
                 className="object-contain"
-                style={{ 
-                  maxHeight: '300px',
+                style={{
+                  maxHeight: '100%',
                   width: `${imageScale}%`,
                   maxWidth: '100%',
                 }}

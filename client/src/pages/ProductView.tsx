@@ -268,18 +268,19 @@ export default function ProductView() {
         </div>
 
         {/* Main Content: Image + Description */}
+        {/* Fixed-height image zone so scaling the image never moves the table. */}
         <div className="flex flex-col md:flex-row gap-8 mb-8">
           {/* Product Image */}
-          <div className="md:w-1/2">
+          <div className="md:w-1/2 flex items-start justify-center" style={{ height: '340px' }}>
             {imageUrl ? (
-              <img 
-                src={imageUrl} 
+              <img
+                src={imageUrl}
                 alt={productName}
-                className="object-contain max-h-96"
-                style={{ width: `${imageScale}%`, maxWidth: '100%' }}
+                className="object-contain"
+                style={{ maxHeight: '100%', width: `${imageScale}%`, maxWidth: '100%' }}
               />
             ) : (
-              <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">
+              <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
                 Kein Bild vorhanden
               </div>
             )}
