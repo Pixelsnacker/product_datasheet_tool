@@ -163,7 +163,7 @@ export default function ProductView() {
           img.src = logoData;
           await new Promise((resolve) => { img.onload = resolve; });
           
-          const logoHeight = 12; // Vernünftige Größe
+          const logoHeight = 8; // Logo-Höhe in mm (kleiner, wie in der Vorschau)
           const logoWidth = (img.width / img.height) * logoHeight;
           const logoX = pageWidth - margin - logoWidth;
           const logoY = subtitleBottomY - logoHeight; // Unterkante bündig
@@ -177,7 +177,7 @@ export default function ProductView() {
       // Divider line
       y += 3;
       pdf.setDrawColor(200, 200, 200);
-      pdf.setLineWidth(0.5);
+      pdf.setLineWidth(0.3);
       pdf.line(margin, y, pageWidth - margin, y);
       y += 8;
       
