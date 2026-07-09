@@ -54,8 +54,6 @@ export function buildDatasheetPdf(opts: {
   const margin = 10;
   const contentWidth = pageWidth - 2 * margin;
 
-  let y = margin;
-
   // Title
   pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
@@ -63,20 +61,20 @@ export function buildDatasheetPdf(opts: {
   const productName = product.productName || "Unbenanntes Produkt";
   const titleWidth = pageWidth - 2 * margin - 60; // Leave space for logo
   const titleLines = pdf.splitTextToSize(productName, titleWidth);
-  pdf.text(titleLines, margin, y + 7);
-  y += 10;
+  pdf.text(titleLines, margin, margin + 7);
 
   // Subtitle
   if (product.productSubtitle) {
     pdf.setFontSize(14);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(100, 100, 100);
-    pdf.text(product.productSubtitle, margin, y + 5);
-    y += 8;
+    pdf.text(product.productSubtitle, margin, margin + 16);
   }
 
-  // Divider line position (below title/subtitle)
-  const dividerY = y + 3;
+  // Fixed divider position so EVERY datasheet aligns identically, whether or
+  // not a subtitle is present.
+  const dividerY = 30;
+  let y = dividerY;
 
   // Logo — top-right, constrained by width, kept fully ABOVE the divider line.
   if (opts.logo) {
@@ -108,21 +106,25 @@ export function buildDatasheetPdf(opts: {
   pdf.line(margin, y, pageWidth - margin, y);
   y += 8;
 
-  // Main content area — image on left, descriptions on right
+  // Main content area — image on left, descriptions on right.
+  // The image lives in a FIXED-height zone so that changing the image size
+  // never moves the technical-data table (identical layout across datasheets).
   const startY = y;
+  const IMAGE_ZONE_HEIGHT = 90; // mm reserved for the product image
 
-  // Product image — keep aspect ratio, scaled by imageScale within max bounds.
+  // Product image — keep aspect ratio, scaled by imageScale, but never larger
+  // than the reserved zone.
   const imageScale = product.imageScale || 100;
   const scaleFactor = imageScale / 100;
-  const baseMaxImgWidth = 62; // mm at 100%
-  const baseMaxImgHeight = 72; // mm at 100%
-  const maxImgWidth = baseMaxImgWidth * scaleFactor;
-  const maxImgHeight = baseMaxImgHeight * scaleFactor;
-  let imgHeight = 0;
+  const baseMaxImgWidth = 80; // mm at 100%
+  const baseMaxImgHeight = 90; // mm at 100%
+  const maxImgWidth = Math.min(baseMaxImgWidth * scaleFactor, 130);
+  const maxImgHeight = Math.min(baseMaxImgHeight * scaleFactor, IMAGE_ZONE_HEIGHT);
 
   if (opts.productImage) {
     const aspectRatio = opts.productImage.width / opts.productImage.height;
     let imgWidth: number;
+    let imgHeight: number;
     if (aspectRatio > maxImgWidth / maxImgHeight) {
       imgWidth = maxImgWidth;
       imgHeight = maxImgWidth / aspectRatio;
@@ -184,8 +186,10 @@ export function buildDatasheetPdf(opts: {
     descY += 3;
   }
 
-  // Technical data starts below both the image and the description column.
-  y = Math.max(startY + imgHeight + 10, descY + 10);
+  // Technical data starts below the FIXED image zone (not the actual image
+  // height), so resizing the image never shifts the table. A long description
+  // column can still push it down.
+  y = Math.max(startY + IMAGE_ZONE_HEIGHT, descY) + 8;
 
   const technicalDataColumns = Array.isArray(product.technicalDataColumns)
     ? product.technicalDataColumns
