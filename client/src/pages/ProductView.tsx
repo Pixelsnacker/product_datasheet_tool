@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { buildDatasheetPdf, type DatasheetProduct } from "@/lib/datasheetPdf";
+import { getDatasheetLabels } from "@/lib/datasheetI18n";
 // Fixed footer data for all product datasheets
 const FIXED_FOOTER: {
   companyName: string;
@@ -183,8 +184,9 @@ export default function ProductView() {
     : [];
   
   // Use fixed footer data from constants
+  const labels = getDatasheetLabels(product.language);
   const locations = FIXED_FOOTER.locations;
-  const footerNote = FIXED_FOOTER.footerNote;
+  const footerNote = labels.footerNote;
   const companyName = FIXED_FOOTER.companyName;
   const companyWebsite = FIXED_FOOTER.companyWebsite;
   const companyEmail = FIXED_FOOTER.companyEmail;
@@ -322,7 +324,7 @@ export default function ProductView() {
         {technicalDataRows.length > 0 ? (
           <div className="mb-8 mt-12">
             <h3 className="text-sm font-semibold text-gray-500 mb-3">
-              Technische Daten
+              {labels.technicalData}
             </h3>
             <div className="h-0.5 bg-gray-200 mb-2"></div>
             <table className="w-full text-sm">

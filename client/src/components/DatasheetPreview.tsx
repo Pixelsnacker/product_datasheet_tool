@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { getDatasheetLabels } from "@/lib/datasheetI18n";
 
 interface DescriptionSection {
   title: string;
@@ -33,6 +34,7 @@ interface DatasheetPreviewProps {
   logoUrl?: string;
   footerNote?: string;
   documentNumber?: string;
+  language?: string;
   className?: string;
   scale?: number;
 }
@@ -53,9 +55,15 @@ export default function DatasheetPreview({
   logoUrl,
   footerNote,
   documentNumber,
+  language,
   className,
   scale = 0.6,
 }: DatasheetPreviewProps) {
+  const labels = getDatasheetLabels(language);
+  // Footer note follows the selected language (the footerNote prop is kept for
+  // backward compatibility but no longer overrides the localized text).
+  void footerNote;
+  const noteText = labels.footerNote;
   return (
     <div 
       className={cn("bg-white shadow-lg border rounded-lg overflow-hidden", className)}
@@ -140,7 +148,7 @@ export default function DatasheetPreview({
         {/* Technical Data Table with Multiple Columns */}
         <div className="mb-6">
           <h3 className="text-[11px] font-semibold text-gray-600 mb-3">
-            Technische Daten
+            {labels.technicalData}
           </h3>
           <div className="h-0.5 bg-gray-200 mb-2"></div>
           
@@ -200,9 +208,9 @@ export default function DatasheetPreview({
         </div>
 
         {/* Footer Note */}
-        {footerNote && (
+        {noteText && (
           <p className="text-[9px] text-gray-500 mb-4 leading-relaxed">
-            {footerNote}
+            {noteText}
           </p>
         )}
 

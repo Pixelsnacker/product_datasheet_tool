@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { getDatasheetLabels } from "@/lib/datasheetI18n";
 
 // Pure, DOM-free PDF layout for a product datasheet. Images must be preloaded
 // (base64 data URL + natural pixel dimensions) so this can be unit-tested in
@@ -28,6 +29,7 @@ export interface DatasheetFooter {
 export interface DatasheetProduct {
   productName?: string | null;
   productSubtitle?: string | null;
+  language?: string | null;
   imageScale?: number | null;
   documentNumber?: string | null;
   descriptionSections?: Array<{ title: string; items: string[] }> | null;
@@ -46,6 +48,7 @@ export function buildDatasheetPdf(opts: {
   productImage?: LoadedImage | null;
 }): jsPDF {
   const { product, footer } = opts;
+  const labels = getDatasheetLabels(product.language);
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -202,7 +205,7 @@ export function buildDatasheetPdf(opts: {
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(120, 120, 120);
-    pdf.text("Technische Daten", margin, y);
+    pdf.text(labels.technicalData, margin, y);
     y += 3;
 
     pdf.setDrawColor(200, 200, 200);
@@ -289,7 +292,7 @@ export function buildDatasheetPdf(opts: {
   pdf.setDrawColor(200, 200, 200);
   pdf.line(margin, y, pageWidth - margin, y);
   y += 4;
-  const noteLines = pdf.splitTextToSize(footer.footerNote, contentWidth);
+  const noteLines = pdf.splitTextToSize(labels.footerNote, contentWidth);
   pdf.text(noteLines, margin, y);
 
   // Company footer at bottom

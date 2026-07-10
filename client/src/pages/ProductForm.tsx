@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
+import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
 import { Link, useLocation, useParams } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -66,7 +67,7 @@ export default function ProductForm() {
   const [technicalDataRows, setTechnicalDataRows] = useState<TechnicalDataRow[]>(DEFAULT_TECHNICAL_DATA);
   const [documentNumber, setDocumentNumber] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [language, setLanguage] = useState<"de" | "en">("de");
+  const [language, setLanguage] = useState<DatasheetLanguage>("de");
   
   // UI state
   const [activeTab, setActiveTab] = useState("edit");
@@ -96,7 +97,7 @@ export default function ProductForm() {
       setTechnicalDataRows((existingProduct.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA);
       setDocumentNumber(existingProduct.documentNumber || "");
       setCategory((existingProduct as any).category || null);
-      setLanguage(((existingProduct as any).language as "de" | "en") || "de");
+      setLanguage(((existingProduct as any).language as DatasheetLanguage) || "de");
     }
   }, [existingProduct]);
   
@@ -409,14 +410,15 @@ export default function ProductForm() {
                   <Label>Sprache / Language</Label>
                   <Select
                     value={language}
-                    onValueChange={(val) => setLanguage(val as "de" | "en")}
+                    onValueChange={(val) => setLanguage(val as DatasheetLanguage)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="de">DE - Deutsch</SelectItem>
-                      <SelectItem value="en">EN - English</SelectItem>
+                      {DATASHEET_LANGUAGES.map((l) => (
+                        <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -722,6 +724,7 @@ export default function ProductForm() {
                   columnWidths={columnWidths}
                   technicalDataRows={technicalDataRows}
                   documentNumber={documentNumber}
+                  language={language}
                   scale={0.55}
                 />
               </div>

@@ -106,7 +106,7 @@ export const appRouter = router({
         documentNumber: z.string().optional(),
         category: z.string().optional(),
         sortOrder: z.number().optional(),
-        language: z.enum(["de", "en"]).optional(),
+        language: z.enum(["de", "en", "pl", "es"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         return db.createProduct({
@@ -130,7 +130,7 @@ export const appRouter = router({
         documentNumber: z.string().optional(),
         category: z.string().optional(),
         sortOrder: z.number().optional(),
-        language: z.enum(["de", "en"]).optional(),
+        language: z.enum(["de", "en", "pl", "es"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const product = await db.getProductById(input.id);
