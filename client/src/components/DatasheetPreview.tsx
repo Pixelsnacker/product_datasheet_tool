@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { getDatasheetLabels } from "@/lib/datasheetI18n";
+import { getDatasheetLabels, translateTerm } from "@/lib/datasheetI18n";
 
 interface DescriptionSection {
   title: string;
@@ -80,14 +80,14 @@ export default function DatasheetPreview({
             "text-2xl font-bold text-gray-700 tracking-wide",
             !productName && "text-gray-300 italic"
           )}>
-            {productName || "Produktname eingeben..."}
+            {translateTerm(productName, language) || "Produktname eingeben..."}
           </h1>
           {(productSubtitle || !productName) && (
             <h2 className={cn(
               "text-lg text-gray-600 mt-1",
               !productSubtitle && "text-gray-300 italic text-sm"
             )}>
-              {productSubtitle || "Untertitel (optional)"}
+              {translateTerm(productSubtitle, language) || "Untertitel (optional)"}
             </h2>
           )}
           <div className="h-0.5 bg-gray-300 mt-4 w-full"></div>
@@ -122,13 +122,13 @@ export default function DatasheetPreview({
               descriptionSections.map((section, index) => (
                 <div key={index}>
                   <h3 className="text-[11px] font-semibold text-gray-600 mb-1">
-                    {section.title || "SEKTION"}
+                    {translateTerm(section.title, language) || "SEKTION"}
                   </h3>
                   <ul className="text-[11px] text-gray-700 leading-relaxed space-y-0.5">
                     {section.items.filter(item => item.trim()).map((item, itemIndex) => (
                       <li key={itemIndex} className="flex items-start">
                         <span className="mr-2 text-gray-500 flex-shrink-0">•</span>
-                        <span className="flex-1 whitespace-pre-wrap">{item}</span>
+                        <span className="flex-1 whitespace-pre-wrap">{translateTerm(item, language)}</span>
                       </li>
                     ))}
                     {section.items.filter(item => item.trim()).length === 0 && (
@@ -163,7 +163,7 @@ export default function DatasheetPreview({
                       className="text-center py-1.5 px-2 text-gray-600 font-semibold border-b border-gray-200"
                       style={{ width: columnWidths[idx] ? `${columnWidths[idx]}%` : 'auto' }}
                     >
-                      {col}
+                      {translateTerm(col, language)}
                     </th>
                   ))}
                 </tr>
@@ -175,7 +175,7 @@ export default function DatasheetPreview({
                     className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}
                   >
                     <td className="py-1.5 px-2 text-gray-700 border-b border-gray-100">
-                      {row.label}
+                      {translateTerm(row.label, language)}
                     </td>
                     {row.values.map((value, vIdx) => (
                       <td 
@@ -183,7 +183,7 @@ export default function DatasheetPreview({
                         className="py-1.5 px-2 text-gray-800 text-center border-b border-gray-100"
                         style={{ width: columnWidths[vIdx] ? `${columnWidths[vIdx]}%` : 'auto' }}
                       >
-                        {value || "-"}
+                        {translateTerm(value, language) || "-"}
                       </td>
                     ))}
                     {/* Fill empty cells if values array is shorter than columns */}

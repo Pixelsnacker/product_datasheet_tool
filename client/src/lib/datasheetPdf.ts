@@ -1,5 +1,17 @@
 import { jsPDF } from "jspdf";
-import { getDatasheetLabels } from "@/lib/datasheetI18n";
+import { getDatasheetLabels, translateTerm } from "@/lib/datasheetI18n";
+import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from "@/lib/datasheetFonts";
+
+// Embedded Unicode font — jsPDF's built-in Helvetica cannot render Polish
+// characters (ł, ż, ę, ś, ć, ą, ź, ń) and mangles them.
+const FONT = "Roboto";
+
+function registerFonts(pdf: jsPDF): void {
+  pdf.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
+  pdf.addFont("Roboto-Regular.ttf", FONT, "normal");
+  pdf.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
+  pdf.addFont("Roboto-Bold.ttf", FONT, "bold");
+}
 
 // Pure, DOM-free PDF layout for a product datasheet. Images must be preloaded
 // (base64 data URL + natural pixel dimensions) so this can be unit-tested in
@@ -51,6 +63,7 @@ export function buildDatasheetPdf(opts: {
   const labels = getDatasheetLabels(product.language);
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  registerFonts(pdf);
 
   const pageWidth = 210;
   const pageHeight = 297;
@@ -59,9 +72,10 @@ export function buildDatasheetPdf(opts: {
 
   // Title
   pdf.setFontSize(20);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(FONT,"bold");
   pdf.setTextColor(80, 80, 80);
-  const productName = product.productName || "Unbenanntes Produkt";
+  const productName =
+    translateTerm(product.productName, product.language) || "Unbenanntes Produkt";
   const titleWidth = pageWidth - 2 * margin - 60; // Leave space for logo
   const titleLines = pdf.splitTextToSize(productName, titleWidth);
   pdf.text(titleLines, margin, margin + 7);
@@ -69,9 +83,13 @@ export function buildDatasheetPdf(opts: {
   // Subtitle
   if (product.productSubtitle) {
     pdf.setFontSize(14);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(FONT,"normal");
     pdf.setTextColor(100, 100, 100);
-    pdf.text(product.productSubtitle, margin, margin + 16);
+    pdf.text(
+      translateTerm(product.productSubtitle, product.language),
+      margin,
+      margin + 16
+    );
   }
 
   // Fixed divider position so EVERY datasheet aligns identically, whether or
@@ -159,9 +177,9 @@ export function buildDatasheetPdf(opts: {
 
     if (section.title) {
       pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
+      pdf.setFont(FONT,"bold");
       pdf.setTextColor(120, 120, 120);
-      pdf.text(section.title, descX, descY);
+      pdf.text(translateTerm(section.title, product.language), descX, descY);
       descY += 4;
     }
 
@@ -169,14 +187,14 @@ export function buildDatasheetPdf(opts: {
       ? section.items.filter(i => i && i.trim())
       : [];
     pdf.setFontSize(9);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(FONT,"normal");
     pdf.setTextColor(60, 60, 60);
 
     for (const item of items) {
       const bulletWidth = 3;
       const textX = descX + bulletWidth;
       const maxWidth = descMaxWidth - bulletWidth;
-      const manualLines = item.split("\n");
+      const manualLines = translateTerm(item, product.language).split("\n");
       pdf.text("•", descX, descY);
       for (let lineIdx = 0; lineIdx < manualLines.length; lineIdx++) {
         const wrappedLines = pdf.splitTextToSize(manualLines[lineIdx], maxWidth);
@@ -203,7 +221,7 @@ export function buildDatasheetPdf(opts: {
 
   if (technicalDataRows.length > 0) {
     pdf.setFontSize(9);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFont(FONT,"bold");
     pdf.setTextColor(120, 120, 120);
     pdf.text(labels.technicalData, margin, y);
     y += 3;
@@ -239,21 +257,24 @@ export function buildDatasheetPdf(opts: {
 
     if (technicalDataColumns.length > 0) {
       pdf.setFontSize(8);
-      pdf.setFont("helvetica", "bold");
+      pdf.setFont(FONT,"bold");
       pdf.setTextColor(80, 80, 80);
       let colX = margin + labelColWidth;
       for (let i = 0; i < technicalDataColumns.length; i++) {
         const colWidth = dataColWidths[i];
-        pdf.text(technicalDataColumns[i] || "", colX + colWidth / 2, y, {
-          align: "center",
-        });
+        pdf.text(
+          translateTerm(technicalDataColumns[i] || "", product.language),
+          colX + colWidth / 2,
+          y,
+          { align: "center" }
+        );
         colX += colWidth;
       }
       y += 5;
     }
 
     pdf.setFontSize(8);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(FONT,"normal");
 
     for (let i = 0; i < technicalDataRows.length; i++) {
       const row = technicalDataRows[i];
@@ -266,7 +287,7 @@ export function buildDatasheetPdf(opts: {
       }
 
       pdf.setTextColor(60, 60, 60);
-      pdf.text(row.label, margin + 2, y);
+      pdf.text(translateTerm(row.label, product.language), margin + 2, y);
 
       const values = Array.isArray(row.values) ? row.values : [];
       const numValueCols = Math.max(technicalDataColumns.length, values.length);
@@ -277,7 +298,9 @@ export function buildDatasheetPdf(opts: {
       for (let j = 0; j < numValueCols; j++) {
         const value = values[j] || "-";
         const colWidth = dataColWidths[j] || valueColWidth;
-        pdf.text(value, colX + colWidth / 2, y, { align: "center" });
+        pdf.text(translateTerm(value, product.language), colX + colWidth / 2, y, {
+          align: "center",
+        });
         colX += colWidth;
       }
       y += rowHeight;
@@ -287,7 +310,7 @@ export function buildDatasheetPdf(opts: {
 
   // Footer note
   pdf.setFontSize(7);
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(FONT,"normal");
   pdf.setTextColor(120, 120, 120);
   pdf.setDrawColor(200, 200, 200);
   pdf.line(margin, y, pageWidth - margin, y);
@@ -302,10 +325,10 @@ export function buildDatasheetPdf(opts: {
 
   let footerX = margin;
   pdf.setFontSize(8);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFont(FONT,"bold");
   pdf.setTextColor(60, 60, 60);
   pdf.text(footer.companyName, footerX, footerY);
-  pdf.setFont("helvetica", "normal");
+  pdf.setFont(FONT,"normal");
   let infoY = footerY + 3;
   pdf.text(footer.companyWebsite, footerX, infoY);
   infoY += 3;
@@ -320,11 +343,11 @@ export function buildDatasheetPdf(opts: {
     pdf.setFontSize(8);
     let locY = footerY;
     if (loc.locationName) {
-      pdf.setFont("helvetica", "bold");
+      pdf.setFont(FONT,"bold");
       pdf.text(loc.locationName, footerX, locY);
       locY += 3;
     }
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(FONT,"normal");
     if (loc.street) {
       pdf.text(loc.street, footerX, locY);
       locY += 3;

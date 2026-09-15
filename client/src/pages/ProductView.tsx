@@ -6,7 +6,7 @@ import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { buildDatasheetPdf, type DatasheetProduct } from "@/lib/datasheetPdf";
-import { getDatasheetLabels } from "@/lib/datasheetI18n";
+import { getDatasheetLabels, translateTerm } from "@/lib/datasheetI18n";
 // Fixed footer data for all product datasheets
 const FIXED_FOOTER: {
   companyName: string;
@@ -246,11 +246,11 @@ export default function ProductView() {
           <div className="flex items-end justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-700 tracking-wide">
-                {productName}
+                {translateTerm(productName, product.language)}
               </h1>
               {productSubtitle ? (
                 <h2 className="text-lg md:text-xl text-gray-600 mt-1">
-                  {productSubtitle}
+                  {translateTerm(productSubtitle, product.language)}
                 </h2>
               ) : null}
             </div>
@@ -301,7 +301,7 @@ export default function ProductView() {
                 <div key={index}>
                   {title ? (
                     <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
-                      {title}
+                      {translateTerm(title, product.language)}
                     </h3>
                   ) : null}
                   {filteredItems.length > 0 ? (
@@ -309,7 +309,7 @@ export default function ProductView() {
                       {filteredItems.map((item, itemIndex) => (
                         <li key={itemIndex} className="flex items-start">
                           <span className="mr-2 flex-shrink-0">•</span>
-                          <span className="flex-1 whitespace-pre-wrap">{item}</span>
+                          <span className="flex-1 whitespace-pre-wrap">{translateTerm(item, product.language)}</span>
                         </li>
                       ))}
                     </ul>
@@ -338,7 +338,7 @@ export default function ProductView() {
                         className="text-center py-2 px-3 text-gray-600 font-semibold border-b border-gray-200"
                         style={{ width: product.columnWidths && (product.columnWidths as number[])[idx] ? `${(product.columnWidths as number[])[idx]}%` : 'auto' }}
                       >
-                        {col || ""}
+                        {translateTerm(col, product.language) || ""}
                       </th>
                     ))}
                   </tr>
@@ -354,7 +354,7 @@ export default function ProductView() {
                   return (
                     <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                       <td className="py-2 px-3 text-gray-700 border-b border-gray-100">
-                        {label}
+                        {translateTerm(label, product.language)}
                       </td>
                       {values.map((value, vIdx) => (
                         <td 
@@ -362,7 +362,7 @@ export default function ProductView() {
                           className="py-2 px-3 text-gray-800 text-center border-b border-gray-100"
                           style={{ width: product.columnWidths && (product.columnWidths as number[])[vIdx] ? `${(product.columnWidths as number[])[vIdx]}%` : 'auto' }}
                         >
-                          {value || "-"}
+                          {translateTerm(value, product.language) || "-"}
                         </td>
                       ))}
                       {/* Fill empty cells if values array is shorter than columns */}
