@@ -131,14 +131,15 @@ export function buildDatasheetPdf(opts: {
   // The image lives in a FIXED-height zone so that changing the image size
   // never moves the technical-data table (identical layout across datasheets).
   const startY = y;
-  const IMAGE_ZONE_HEIGHT = 90; // mm reserved for the product image
+  const IMAGE_ZONE_HEIGHT = 113; // mm reserved for the product image (matches
+  // the Siepe reference: a large image so the table starts ~mid-page)
 
   // Product image — keep aspect ratio, scaled by imageScale, but never larger
   // than the reserved zone.
   const imageScale = product.imageScale || 100;
   const scaleFactor = imageScale / 100;
   const baseMaxImgWidth = 80; // mm at 100%
-  const baseMaxImgHeight = 90; // mm at 100%
+  const baseMaxImgHeight = 113; // mm at 100% (fills the image zone)
   const maxImgWidth = Math.min(baseMaxImgWidth * scaleFactor, 130);
   const maxImgHeight = Math.min(baseMaxImgHeight * scaleFactor, IMAGE_ZONE_HEIGHT);
 
@@ -210,7 +211,7 @@ export function buildDatasheetPdf(opts: {
   // ── Fixed gap between the image zone and the technical-data heading ──
   // The table start is independent of the actual image height, so it is the
   // same on every datasheet. A long description column can still push it down.
-  const IMAGE_TABLE_GAP = 12;
+  const IMAGE_TABLE_GAP = 8;
   y = Math.max(startY + IMAGE_ZONE_HEIGHT, descY) + IMAGE_TABLE_GAP;
 
   const technicalDataColumns = Array.isArray(product.technicalDataColumns)
