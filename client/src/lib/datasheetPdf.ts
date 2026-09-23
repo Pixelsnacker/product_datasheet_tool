@@ -207,10 +207,11 @@ export function buildDatasheetPdf(opts: {
     descY += 3;
   }
 
-  // Technical data starts below the FIXED image zone (not the actual image
-  // height), so resizing the image never shifts the table. A long description
-  // column can still push it down.
-  y = Math.max(startY + IMAGE_ZONE_HEIGHT, descY) + 8;
+  // ── Fixed gap between the image zone and the technical-data heading ──
+  // The table start is independent of the actual image height, so it is the
+  // same on every datasheet. A long description column can still push it down.
+  const IMAGE_TABLE_GAP = 12;
+  y = Math.max(startY + IMAGE_ZONE_HEIGHT, descY) + IMAGE_TABLE_GAP;
 
   const technicalDataColumns = Array.isArray(product.technicalDataColumns)
     ? product.technicalDataColumns
@@ -219,117 +220,38 @@ export function buildDatasheetPdf(opts: {
     ? product.technicalDataRows.filter(row => row && typeof row === "object")
     : [];
 
-  if (technicalDataRows.length > 0) {
-    pdf.setFontSize(9);
-    pdf.setFont(FONT,"bold");
-    pdf.setTextColor(120, 120, 120);
-    pdf.text(labels.technicalData, margin, y);
-    y += 3;
+  // ── Footer geometry: fixed positions at the bottom of the page ──
+  const companyFooterY = pageHeight - 25; // company name baseline
+  const footerDividerY = companyFooterY - 5; // rule above the company block
+  const noteLines = pdf.splitTextToSize(labels.footerNote, contentWidth);
+  const NOTE_LINE_H = 3;
+  const noteTopY = footerDividerY - 4 - noteLines.length * NOTE_LINE_H;
+  // The technical-data table may grow down to here; everything below belongs to
+  // the footer block and must never be overlapped by the table.
+  const CONTENT_BOTTOM_LIMIT = noteTopY - 4;
+  const PAGE_TOP_MARGIN = 20; // where a continued table restarts on a new page
+  const rowHeight = 5;
 
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, y, pageWidth - margin, y);
-    y += 4;
-
-    const labelColWidth = contentWidth * 0.35;
-    const hasCustomWidths =
-      Array.isArray(product.columnWidths) &&
-      product.columnWidths.length === technicalDataColumns.length;
-    const dataColWidths: number[] = [];
-
-    if (hasCustomWidths) {
-      const remainingWidth = contentWidth - labelColWidth;
-      const totalPercent = (product.columnWidths as number[]).reduce(
-        (sum, w) => sum + w,
-        0
-      );
-      for (const widthPercent of product.columnWidths as number[]) {
-        dataColWidths.push((widthPercent / totalPercent) * remainingWidth);
-      }
-    } else {
-      const equalWidth =
-        (contentWidth - labelColWidth) /
-        Math.max(technicalDataColumns.length, 1);
-      for (let i = 0; i < technicalDataColumns.length; i++) {
-        dataColWidths.push(equalWidth);
-      }
-    }
-
-    if (technicalDataColumns.length > 0) {
-      pdf.setFontSize(8);
-      pdf.setFont(FONT,"bold");
-      pdf.setTextColor(80, 80, 80);
-      let colX = margin + labelColWidth;
-      for (let i = 0; i < technicalDataColumns.length; i++) {
-        const colWidth = dataColWidths[i];
-        pdf.text(
-          translateTerm(technicalDataColumns[i] || "", product.language),
-          colX + colWidth / 2,
-          y,
-          { align: "center" }
-        );
-        colX += colWidth;
-      }
-      y += 5;
-    }
-
-    pdf.setFontSize(8);
-    pdf.setFont(FONT,"normal");
-
-    for (let i = 0; i < technicalDataRows.length; i++) {
-      const row = technicalDataRows[i];
-      if (!row.label || !row.label.trim()) continue;
-
-      const rowHeight = 5;
-      if (i % 2 === 0) {
-        pdf.setFillColor(245, 245, 245);
-        pdf.rect(margin, y - 3.5, contentWidth, rowHeight, "F");
-      }
-
-      pdf.setTextColor(60, 60, 60);
-      pdf.text(translateTerm(row.label, product.language), margin + 2, y);
-
-      const values = Array.isArray(row.values) ? row.values : [];
-      const numValueCols = Math.max(technicalDataColumns.length, values.length);
-      let colX = margin + labelColWidth;
-      const valueColWidth =
-        numValueCols > 0 ? (contentWidth - labelColWidth) / numValueCols : 0;
-
-      for (let j = 0; j < numValueCols; j++) {
-        const value = values[j] || "-";
-        const colWidth = dataColWidths[j] || valueColWidth;
-        pdf.text(translateTerm(value, product.language), colX + colWidth / 2, y, {
-          align: "center",
-        });
-        colX += colWidth;
-      }
-      y += rowHeight;
-    }
-    y += 5;
-  }
-
-  // Footer note
+  const drawFooter = () => {
+  // ── Footer block: fixed at the bottom of the (last) page ──
+  // Disclaimer note, sitting just above the company rule.
   pdf.setFontSize(7);
-  pdf.setFont(FONT,"normal");
+  pdf.setFont(FONT, "normal");
   pdf.setTextColor(120, 120, 120);
   pdf.setDrawColor(200, 200, 200);
-  pdf.line(margin, y, pageWidth - margin, y);
-  y += 4;
-  const noteLines = pdf.splitTextToSize(labels.footerNote, contentWidth);
-  pdf.text(noteLines, margin, y);
+  pdf.line(margin, noteTopY - 2, pageWidth - margin, noteTopY - 2);
+  pdf.text(noteLines, margin, noteTopY + NOTE_LINE_H);
 
-  // Company footer at bottom
-  const footerY = pageHeight - 25;
+  // Company footer
   pdf.setDrawColor(200, 200, 200);
-  pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-
+  pdf.line(margin, footerDividerY, pageWidth - margin, footerDividerY);
   let footerX = margin;
   pdf.setFontSize(8);
-  pdf.setFont(FONT,"bold");
+  pdf.setFont(FONT, "bold");
   pdf.setTextColor(60, 60, 60);
-  pdf.text(footer.companyName, footerX, footerY);
-  pdf.setFont(FONT,"normal");
-  let infoY = footerY + 3;
+  pdf.text(footer.companyName, footerX, companyFooterY);
+  pdf.setFont(FONT, "normal");
+  let infoY = companyFooterY + 3;
   pdf.text(footer.companyWebsite, footerX, infoY);
   infoY += 3;
   pdf.text(footer.companyEmail, footerX, infoY);
@@ -338,16 +260,16 @@ export function buildDatasheetPdf(opts: {
   for (const loc of footer.locations) {
     if (!loc.locationName && !loc.street && !loc.zipCity && !loc.phone) continue;
     pdf.setDrawColor(180, 180, 180);
-    pdf.line(footerX, footerY - 2, footerX, footerY + 10);
+    pdf.line(footerX, companyFooterY - 2, footerX, companyFooterY + 10);
     footerX += 3;
     pdf.setFontSize(8);
-    let locY = footerY;
+    let locY = companyFooterY;
     if (loc.locationName) {
-      pdf.setFont(FONT,"bold");
+      pdf.setFont(FONT, "bold");
       pdf.text(loc.locationName, footerX, locY);
       locY += 3;
     }
-    pdf.setFont(FONT,"normal");
+    pdf.setFont(FONT, "normal");
     if (loc.street) {
       pdf.text(loc.street, footerX, locY);
       locY += 3;
@@ -367,6 +289,114 @@ export function buildDatasheetPdf(opts: {
     pdf.setTextColor(150, 150, 150);
     pdf.text(product.documentNumber, margin, pageHeight - margin);
   }
+  };
+
+  if (technicalDataRows.length > 0) {
+    // Section heading + rule (first page only)
+    pdf.setFontSize(9);
+    pdf.setFont(FONT, "bold");
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(labels.technicalData, margin, y);
+    y += 3;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 4;
+
+    // Column widths
+    const labelColWidth = contentWidth * 0.35;
+    const hasCustomWidths =
+      Array.isArray(product.columnWidths) &&
+      product.columnWidths.length === technicalDataColumns.length;
+    const dataColWidths: number[] = [];
+    if (hasCustomWidths) {
+      const remainingWidth = contentWidth - labelColWidth;
+      const totalPercent = (product.columnWidths as number[]).reduce(
+        (sum, w) => sum + w,
+        0
+      );
+      for (const widthPercent of product.columnWidths as number[]) {
+        dataColWidths.push((widthPercent / totalPercent) * remainingWidth);
+      }
+    } else {
+      const equalWidth =
+        (contentWidth - labelColWidth) /
+        Math.max(technicalDataColumns.length, 1);
+      for (let i = 0; i < technicalDataColumns.length; i++) {
+        dataColWidths.push(equalWidth);
+      }
+    }
+
+    // Column header row — repeated at the top of every page the table spans.
+    const drawColumnHeader = () => {
+      if (technicalDataColumns.length === 0) return;
+      pdf.setFontSize(8);
+      pdf.setFont(FONT, "bold");
+      pdf.setTextColor(80, 80, 80);
+      let colX = margin + labelColWidth;
+      for (let i = 0; i < technicalDataColumns.length; i++) {
+        const colWidth = dataColWidths[i];
+        pdf.text(
+          translateTerm(technicalDataColumns[i] || "", product.language),
+          colX + colWidth / 2,
+          y,
+          { align: "center" }
+        );
+        colX += colWidth;
+      }
+      y += 5;
+    };
+
+    drawColumnHeader();
+
+    // Data rows — grow downward; break to a new page before reaching the footer.
+    pdf.setFontSize(8);
+    pdf.setFont(FONT, "normal");
+    let visibleIndex = 0;
+    for (let i = 0; i < technicalDataRows.length; i++) {
+      const row = technicalDataRows[i];
+      if (!row.label || !row.label.trim()) continue;
+
+      if (y + rowHeight > CONTENT_BOTTOM_LIMIT) {
+        drawFooter();
+        pdf.addPage();
+        y = PAGE_TOP_MARGIN;
+        drawColumnHeader();
+        pdf.setFontSize(8);
+        pdf.setFont(FONT, "normal");
+      }
+
+      if (visibleIndex % 2 === 0) {
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(margin, y - 3.5, contentWidth, rowHeight, "F");
+      }
+
+      pdf.setTextColor(60, 60, 60);
+      pdf.text(translateTerm(row.label, product.language), margin + 2, y);
+
+      const values = Array.isArray(row.values) ? row.values : [];
+      const numValueCols = Math.max(technicalDataColumns.length, values.length);
+      let colX = margin + labelColWidth;
+      const valueColWidth =
+        numValueCols > 0 ? (contentWidth - labelColWidth) / numValueCols : 0;
+      for (let j = 0; j < numValueCols; j++) {
+        const value = values[j] || "-";
+        const colWidth = dataColWidths[j] || valueColWidth;
+        pdf.text(
+          translateTerm(value, product.language),
+          colX + colWidth / 2,
+          y,
+          { align: "center" }
+        );
+        colX += colWidth;
+      }
+      y += rowHeight;
+      visibleIndex += 1;
+    }
+  }
+
+  // Footer on every page, always at the fixed bottom position.
+  drawFooter();
 
   return pdf;
 }
