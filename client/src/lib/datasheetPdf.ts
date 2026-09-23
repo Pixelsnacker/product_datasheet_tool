@@ -131,15 +131,15 @@ export function buildDatasheetPdf(opts: {
   // The image lives in a FIXED-height zone so that changing the image size
   // never moves the technical-data table (identical layout across datasheets).
   const startY = y;
-  const IMAGE_ZONE_HEIGHT = 113; // mm reserved for the product image (matches
+  const IMAGE_ZONE_HEIGHT = 135; // mm reserved for the product image (matches
   // the Siepe reference: a large image so the table starts ~mid-page)
 
   // Product image — keep aspect ratio, scaled by imageScale, but never larger
   // than the reserved zone.
   const imageScale = product.imageScale || 100;
   const scaleFactor = imageScale / 100;
-  const baseMaxImgWidth = 80; // mm at 100%
-  const baseMaxImgHeight = 113; // mm at 100% (fills the image zone)
+  const baseMaxImgWidth = 85; // mm at 100%
+  const baseMaxImgHeight = 135; // mm at 100% (fills the image zone)
   const maxImgWidth = Math.min(baseMaxImgWidth * scaleFactor, 130);
   const maxImgHeight = Math.min(baseMaxImgHeight * scaleFactor, IMAGE_ZONE_HEIGHT);
 

@@ -273,7 +273,7 @@ export default function ProductView() {
         {/* Fixed-height image zone so scaling the image never moves the table. */}
         <div className="flex flex-col md:flex-row gap-8 mb-8">
           {/* Product Image */}
-          <div className="md:w-1/2 flex items-start justify-center" style={{ height: '425px' }}>
+          <div className="md:w-1/2 flex items-start justify-center" style={{ height: '510px' }}>
             {imageUrl ? (
               <img
                 src={imageUrl}

@@ -97,7 +97,7 @@ export default function DatasheetPreview({
         {/* Fixed-height image zone so scaling the image never moves the table. */}
         <div className="flex gap-6 mb-8">
           {/* Product Image */}
-          <div className="w-1/2 flex items-start justify-center" style={{ height: '320px' }}>
+          <div className="w-1/2 flex items-start justify-center" style={{ height: '383px' }}>
             {imageUrl ? (
               <img
                 src={imageUrl}
