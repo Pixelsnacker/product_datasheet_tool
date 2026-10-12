@@ -6,10 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
 import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Link, useLocation, useParams } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -23,7 +26,12 @@ interface DescriptionSection {
 interface TechnicalDataRow {
   label: string;
   values: string[];
+  _id?: string; // stable id for drag & drop (stripped before saving)
 }
+
+const genRowId = () => `r_${Math.random().toString(36).slice(2)}`;
+const withRowIds = (rows: TechnicalDataRow[]): TechnicalDataRow[] =>
+  (Array.isArray(rows) ? rows : []).map(r => (r && r._id ? r : { ...r, _id: genRowId() }));
 
 
 
@@ -45,6 +53,74 @@ const DEFAULT_TECHNICAL_DATA: TechnicalDataRow[] = [
   { label: "Gesamthöhe [mm]", values: ["", "", "", "", ""] },
 ];
 
+function SortableTechRow({
+  row,
+  rowIndex,
+  onLabel,
+  onValue,
+  onRemove,
+}: {
+  row: TechnicalDataRow;
+  rowIndex: number;
+  onLabel: (i: number, v: string) => void;
+  onValue: (i: number, c: number, v: string) => void;
+  onRemove: (i: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: row._id! });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    position: "relative" as const,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+      <td className="py-1 px-1 w-8 align-middle">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          title="Zum Verschieben ziehen"
+          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 touch-none"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+      <td className="py-1 px-2">
+        <Input
+          value={row.label}
+          onChange={(e) => onLabel(rowIndex, e.target.value)}
+          placeholder="Eigenschaft"
+          className="h-8"
+        />
+      </td>
+      {row.values.map((value, colIndex) => (
+        <td key={colIndex} className="py-1 px-1">
+          <Input
+            value={value}
+            onChange={(e) => onValue(rowIndex, colIndex, e.target.value)}
+            placeholder="-"
+            className="text-center h-8 min-w-[120px]"
+          />
+        </td>
+      ))}
+      <td className="py-1 px-1 w-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(rowIndex)}
+          title="Zeile löschen"
+          className="h-6 w-6 text-gray-400 hover:text-red-500"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
 export default function ProductForm() {
   const { id } = useParams<{ id?: string }>();
   const isEditing = !!id;
@@ -64,7 +140,7 @@ export default function ProductForm() {
   const [descriptionSections, setDescriptionSections] = useState<DescriptionSection[]>(DEFAULT_SECTIONS);
   const [technicalDataColumns, setTechnicalDataColumns] = useState<string[]>(DEFAULT_COLUMNS);
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
-  const [technicalDataRows, setTechnicalDataRows] = useState<TechnicalDataRow[]>(DEFAULT_TECHNICAL_DATA);
+  const [technicalDataRows, setTechnicalDataRows] = useState<TechnicalDataRow[]>(withRowIds(DEFAULT_TECHNICAL_DATA));
   const [documentNumber, setDocumentNumber] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [language, setLanguage] = useState<DatasheetLanguage>("de");
@@ -94,7 +170,7 @@ export default function ProductForm() {
       setDescriptionSections(existingProduct.descriptionSections || DEFAULT_SECTIONS);
       setTechnicalDataColumns(existingProduct.technicalDataColumns || DEFAULT_COLUMNS);
       setColumnWidths((existingProduct.columnWidths as number[]) || []);
-      setTechnicalDataRows((existingProduct.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA);
+      setTechnicalDataRows(withRowIds((existingProduct.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA));
       setDocumentNumber(existingProduct.documentNumber || "");
       setCategory((existingProduct as any).category || null);
       setLanguage(((existingProduct as any).language as DatasheetLanguage) || "de");
@@ -107,7 +183,7 @@ export default function ProductForm() {
       setDescriptionSections(templateData.descriptionSections || DEFAULT_SECTIONS);
       setTechnicalDataColumns(templateData.technicalDataColumns || DEFAULT_COLUMNS);
       setColumnWidths((templateData.columnWidths as number[]) || []);
-      setTechnicalDataRows((templateData.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA);
+      setTechnicalDataRows(withRowIds((templateData.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA));
       toast.success(`Vorlage "${templateData.name}" geladen`);
     }
   }, [templateData, isEditing]);
@@ -135,7 +211,7 @@ export default function ProductForm() {
         descriptionSections: descriptionSections.filter(s => s.items.some(i => i.trim())),
         technicalDataColumns: technicalDataColumns.filter(c => c.trim()),
         columnWidths: columnWidths.length > 0 ? columnWidths : undefined,
-        technicalDataRows: technicalDataRows.filter(t => t.label.trim()),
+        technicalDataRows: technicalDataRows.filter(t => t.label.trim()).map(t => ({ label: t.label, values: t.values })),
         documentNumber: documentNumber || undefined,
         category: category || undefined,
         language: language,
@@ -293,9 +369,10 @@ export default function ProductForm() {
   };
 
   const addRow = () => {
-    setTechnicalDataRows([{ 
-      label: "", 
-      values: Array(technicalDataColumns.length).fill("") 
+    setTechnicalDataRows([{
+      label: "",
+      values: Array(technicalDataColumns.length).fill(""),
+      _id: genRowId(),
     }, ...technicalDataRows]);
   };
 
@@ -303,12 +380,17 @@ export default function ProductForm() {
     setTechnicalDataRows(technicalDataRows.filter((_, i) => i !== rowIndex));
   };
 
-  const moveRow = (rowIndex: number, direction: -1 | 1) => {
-    const target = rowIndex + direction;
-    if (target < 0 || target >= technicalDataRows.length) return;
-    const newRows = [...technicalDataRows];
-    [newRows[rowIndex], newRows[target]] = [newRows[target], newRows[rowIndex]];
-    setTechnicalDataRows(newRows);
+  // Drag & drop reordering of technical-data rows
+  const rowSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+  );
+  const handleRowDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = technicalDataRows.findIndex(r => r._id === active.id);
+    const newIndex = technicalDataRows.findIndex(r => r._id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    setTechnicalDataRows(arrayMove(technicalDataRows, oldIndex, newIndex));
   };
 
 
@@ -609,9 +691,11 @@ export default function ProductForm() {
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
+                  <DndContext sensors={rowSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
+                        <th className="w-8"></th>
                         <th className="text-left py-2 px-2 w-48">Eigenschaft</th>
                         {technicalDataColumns.map((col, colIndex) => (
                           <th key={colIndex} className="py-2 px-1">
@@ -650,67 +734,25 @@ export default function ProductForm() {
                             </div>
                           </th>
                         ))}
-                        <th className="w-24"></th>
+                        <th className="w-10"></th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {technicalDataRows.map((row, rowIndex) => (
-                        <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                          <td className="py-1 px-2">
-                            <Input
-                              value={row.label}
-                              onChange={(e) => updateRowLabel(rowIndex, e.target.value)}
-                              placeholder="Eigenschaft"
-                              className="h-8"
-                            />
-                          </td>
-                          {row.values.map((value, colIndex) => (
-                            <td key={colIndex} className="py-1 px-1">
-                              <Input
-                                value={value}
-                                onChange={(e) => updateCellValue(rowIndex, colIndex, e.target.value)}
-                                placeholder="-"
-                                className="text-center h-8 min-w-[120px]"
-                              />
-                            </td>
-                          ))}
-                          <td className="py-1 px-1">
-                            <div className="flex items-center gap-0.5">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => moveRow(rowIndex, -1)}
-                                disabled={rowIndex === 0}
-                                title="Nach oben"
-                                className="h-6 w-6 text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                              >
-                                <ChevronUp className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => moveRow(rowIndex, 1)}
-                                disabled={rowIndex === technicalDataRows.length - 1}
-                                title="Nach unten"
-                                className="h-6 w-6 text-gray-400 hover:text-gray-700 disabled:opacity-30"
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeRow(rowIndex)}
-                                title="Zeile löschen"
-                                className="h-6 w-6 text-gray-400 hover:text-red-500"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    <SortableContext items={technicalDataRows.map(r => r._id!)} strategy={verticalListSortingStrategy}>
+                      <tbody>
+                        {technicalDataRows.map((row, rowIndex) => (
+                          <SortableTechRow
+                            key={row._id}
+                            row={row}
+                            rowIndex={rowIndex}
+                            onLabel={updateRowLabel}
+                            onValue={updateCellValue}
+                            onRemove={removeRow}
+                          />
+                        ))}
+                      </tbody>
+                    </SortableContext>
                   </table>
+                  </DndContext>
                 </div>
               </CardContent>
             </Card>
