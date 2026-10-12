@@ -139,7 +139,7 @@ export function buildDatasheetPdf(opts: {
   // than the reserved zone.
   const imageScale = product.imageScale || 100;
   const scaleFactor = imageScale / 100;
-  const baseMaxImgWidth = 85; // mm at 100%
+  const baseMaxImgWidth = 115; // mm at 100%
   const baseMaxImgHeight = 135; // mm at 100% (fills the image zone)
   const maxImgWidth = Math.min(baseMaxImgWidth * scaleFactor, 130);
   const maxImgHeight = Math.min(baseMaxImgHeight * scaleFactor, IMAGE_ZONE_HEIGHT);
