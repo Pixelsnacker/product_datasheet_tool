@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Copy, Check, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Copy, Check, Download, Send, Undo2, BadgeCheck } from "lucide-react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { Link, useParams } from "wouter";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
@@ -74,7 +76,26 @@ export default function ProductView() {
     { enabled: !!id }
   );
 
+  const utils = trpc.useUtils();
+  const setStatusMutation = trpc.products.setStatus.useMutation({
+    onSuccess: () => {
+      utils.products.getById.invalidate();
+      utils.products.list.invalidate();
+    },
+    onError: (e) => toast.error("Status konnte nicht geändert werden: " + e.message),
+  });
 
+  const changeStatus = (status: "draft" | "review" | "approved", approvedBy?: string) => {
+    if (!product) return;
+    setStatusMutation.mutate({ id: product.id, status, approvedBy });
+  };
+
+  const handleApprove = () => {
+    const name = window.prompt("Freigegeben von (Name oder Kürzel):", "");
+    if (name === null) return; // abgebrochen
+    changeStatus("approved", name);
+    toast.success("Datenblatt freigegeben");
+  };
 
   const handleCopyLink = () => {
     const url = window.location.href;
@@ -198,6 +219,13 @@ export default function ProductView() {
   const imageScale = product.imageScale || 100;
   const documentNumber = product.documentNumber || "";
 
+  const status = (product.status as "draft" | "review" | "approved") || "draft";
+  const STATUS_META: Record<string, { label: string; cls: string }> = {
+    draft: { label: "Entwurf", cls: "bg-amber-100 text-amber-800 border border-amber-200" },
+    review: { label: "In Prüfung", cls: "bg-blue-100 text-blue-800 border border-blue-200" },
+    approved: { label: "Freigegeben", cls: "bg-green-100 text-green-800 border border-green-200" },
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Action Bar - Only visible for logged-in users, hidden when printing */}
@@ -211,8 +239,41 @@ export default function ProductView() {
               </Link>
             </Button>
             <span className="text-sm text-gray-600">Produktdatenblatt</span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_META[status].cls}`}>
+              {STATUS_META[status].label}
+            </span>
+            {status === "approved" && product.approvedBy && (
+              <span className="text-xs text-gray-500">
+                von {product.approvedBy}
+                {product.approvedAt ? ` · ${format(new Date(product.approvedAt), "dd.MM.yyyy", { locale: de })}` : ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {status === "draft" && (
+              <Button variant="outline" size="sm" onClick={() => changeStatus("review")} disabled={setStatusMutation.isPending}>
+                <Send className="h-4 w-4 mr-2" />
+                Zur Prüfung einreichen
+              </Button>
+            )}
+            {status === "review" && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => changeStatus("draft")} disabled={setStatusMutation.isPending}>
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Zurück zu Entwurf
+                </Button>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleApprove} disabled={setStatusMutation.isPending}>
+                  <BadgeCheck className="h-4 w-4 mr-2" />
+                  Freigeben
+                </Button>
+              </>
+            )}
+            {status === "approved" && (
+              <Button variant="outline" size="sm" onClick={() => changeStatus("draft")} disabled={setStatusMutation.isPending}>
+                <Undo2 className="h-4 w-4 mr-2" />
+                Zurück zu Entwurf
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={handleCopyLink}>
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
               Link kopieren

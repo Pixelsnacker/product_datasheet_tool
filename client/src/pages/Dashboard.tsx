@@ -68,7 +68,14 @@ type Product = {
   documentNumber?: string | null;
   category?: string | null;
   sortOrder?: number | null;
+  status?: string | null;
   createdAt: Date;
+};
+
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  draft: { label: "Entwurf", cls: "bg-amber-100 text-amber-800 border border-amber-200" },
+  review: { label: "In Prüfung", cls: "bg-blue-100 text-blue-800 border border-blue-200" },
+  approved: { label: "Freigegeben", cls: "bg-green-100 text-green-800 border border-green-200" },
 };
 
 // Sortable product card component
@@ -125,8 +132,13 @@ function SortableProductCard({
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="text-xs text-gray-400 mb-3">
-            Erstellt: {format(new Date(product.createdAt), "dd.MM.yyyy", { locale: de })}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-gray-400">
+              Erstellt: {format(new Date(product.createdAt), "dd.MM.yyyy", { locale: de })}
+            </span>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_META[product.status || "draft"].cls}`}>
+              {STATUS_META[product.status || "draft"].label}
+            </span>
           </div>
 
           {/* Category selector */}
@@ -287,6 +299,7 @@ export default function Dashboard() {
     new Set([...PRODUCT_CATEGORIES, UNCATEGORIZED])
   );
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "review" | "approved">("all");
 
   const { data: templates = [] } = trpc.templates.list.useQuery();
   const { data: products, isLoading } = trpc.products.list.useQuery();
@@ -383,12 +396,13 @@ export default function Dashboard() {
     const searchLower = searchQuery.toLowerCase().trim();
     return products.filter(
       (p) =>
-        !searchLower ||
-        p.productName.toLowerCase().includes(searchLower) ||
-        (p.productSubtitle?.toLowerCase().includes(searchLower)) ||
-        (p.documentNumber?.toLowerCase().includes(searchLower))
+        (statusFilter === "all" || (p.status || "draft") === statusFilter) &&
+        (!searchLower ||
+          p.productName.toLowerCase().includes(searchLower) ||
+          (p.productSubtitle?.toLowerCase().includes(searchLower)) ||
+          (p.documentNumber?.toLowerCase().includes(searchLower)))
     );
-  }, [products, searchQuery]);
+  }, [products, searchQuery, statusFilter]);
 
   const groupedProducts = useMemo(() => {
     const groups: Record<string, Product[]> = {};
@@ -408,7 +422,13 @@ export default function Dashboard() {
   }, [filteredProducts]);
 
   const activeProduct = activeId ? products?.find((p) => p.id === activeId) : null;
-  const hasActiveFilters = searchQuery.trim() !== "";
+  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
+
+  const statusCounts = useMemo(() => {
+    const c = { all: products?.length || 0, draft: 0, review: 0, approved: 0 } as Record<string, number>;
+    for (const p of products || []) c[(p.status as string) || "draft"]++;
+    return c;
+  }, [products]);
 
   // Categories to display (only those with products, or all if no search)
   const categoriesToShow = useMemo(() => {
@@ -473,11 +493,24 @@ export default function Dashboard() {
             )}
           </div>
           {hasActiveFilters && (
-            <Button variant="ghost" onClick={() => setSearchQuery("")} className="gap-2 text-gray-500">
+            <Button variant="ghost" onClick={() => { setSearchQuery(""); setStatusFilter("all"); }} className="gap-2 text-gray-500">
               <X className="h-4 w-4" />
-              Suche löschen
+              Filter zurücksetzen
             </Button>
           )}
+        </div>
+
+        {/* Status filter */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {([["all", "Alle"], ["draft", "Entwurf"], ["review", "In Prüfung"], ["approved", "Freigegeben"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setStatusFilter(key)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${statusFilter === key ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+            >
+              {label} <span className="opacity-60">({statusCounts[key]})</span>
+            </button>
+          ))}
         </div>
 
         {/* Results count */}

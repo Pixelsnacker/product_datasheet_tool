@@ -59,7 +59,12 @@ export const products = mysqlTable("products", {
   
   // Footer info - only document number is editable, rest is fixed
   documentNumber: varchar("documentNumber", { length: 100 }),
-  
+
+  // Approval workflow: draft -> review -> approved
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  approvedBy: varchar("approvedBy", { length: 100 }), // name/initials of approver
+  approvedAt: timestamp("approvedAt"),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

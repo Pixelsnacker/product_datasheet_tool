@@ -175,6 +175,34 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Approval workflow: set status (draft -> review -> approved)
+    setStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["draft", "review", "approved"]),
+        approvedBy: z.string().max(100).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const product = await db.getProductById(input.id);
+        if (!product || product.userId !== ctx.user.id) {
+          throw new Error("Product not found or unauthorized");
+        }
+        if (input.status === "approved") {
+          await db.updateProduct(input.id, {
+            status: "approved",
+            approvedBy: (input.approvedBy || "").trim() || "–",
+            approvedAt: new Date(),
+          });
+        } else {
+          await db.updateProduct(input.id, {
+            status: input.status,
+            approvedBy: null,
+            approvedAt: null,
+          });
+        }
+        return { success: true };
+      }),
+
     // Duplicate a product
     duplicate: protectedProcedure
       .input(z.object({ id: z.number() }))

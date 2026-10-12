@@ -42,6 +42,7 @@ export interface DatasheetProduct {
   productName?: string | null;
   productSubtitle?: string | null;
   language?: string | null;
+  status?: string | null;
   imageScale?: number | null;
   documentNumber?: string | null;
   descriptionSections?: Array<{ title: string; items: string[] }> | null;
@@ -233,6 +234,28 @@ export function buildDatasheetPdf(opts: {
   const PAGE_TOP_MARGIN = 20; // where a continued table restarts on a new page
   const rowHeight = 5;
 
+  // Draft/review watermark: stamp every page until the datasheet is approved,
+  // so an unreleased version can never be mistaken for a final one.
+  const drawWatermark = () => {
+    if (product.status === "approved" || !product.status) return;
+    const text = product.status === "review" ? "IN PRÜFUNG" : "ENTWURF";
+    pdf.saveGraphicsState();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pdf.setGState(new (pdf as any).GState({ opacity: 0.1 }));
+    } catch {
+      /* older jsPDF without GState: fall back to a light colour */
+    }
+    pdf.setFont(FONT, "bold");
+    pdf.setFontSize(70);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(text, pageWidth / 2, pageHeight / 2, {
+      align: "center",
+      angle: 45,
+    });
+    pdf.restoreGraphicsState();
+  };
+
   const drawFooter = () => {
   // ── Footer block: fixed at the bottom of the (last) page ──
   // Disclaimer note, sitting just above the company rule.
@@ -359,6 +382,7 @@ export function buildDatasheetPdf(opts: {
       if (!row.label || !row.label.trim()) continue;
 
       if (y + rowHeight > CONTENT_BOTTOM_LIMIT) {
+        drawWatermark();
         drawFooter();
         pdf.addPage();
         y = PAGE_TOP_MARGIN;
@@ -396,7 +420,8 @@ export function buildDatasheetPdf(opts: {
     }
   }
 
-  // Footer on every page, always at the fixed bottom position.
+  // Watermark + footer on every page, always at the fixed bottom position.
+  drawWatermark();
   drawFooter();
 
   return pdf;
