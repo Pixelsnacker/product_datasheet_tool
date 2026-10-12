@@ -1,16 +1,16 @@
 import { jsPDF } from "jspdf";
 import { getDatasheetLabels, translateTerm } from "@/lib/datasheetI18n";
-import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from "@/lib/datasheetFonts";
+import { DATASHEET_FONT_REGULAR_BASE64, DATASHEET_FONT_BOLD_BASE64 } from "@/lib/datasheetFonts";
 
-// Embedded Unicode font — jsPDF's built-in Helvetica cannot render Polish
-// characters (ł, ż, ę, ś, ć, ą, ź, ń) and mangles them.
-const FONT = "Roboto";
+// Embedded Unicode font (Source Sans 3) — jsPDF's built-in Helvetica cannot
+// render Polish characters (ł, ż, ę, ś, ć, ą, ź, ń) and mangles them.
+const FONT = "SourceSans3";
 
 function registerFonts(pdf: jsPDF): void {
-  pdf.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
-  pdf.addFont("Roboto-Regular.ttf", FONT, "normal");
-  pdf.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
-  pdf.addFont("Roboto-Bold.ttf", FONT, "bold");
+  pdf.addFileToVFS("SourceSans3-Regular.ttf", DATASHEET_FONT_REGULAR_BASE64);
+  pdf.addFont("SourceSans3-Regular.ttf", FONT, "normal");
+  pdf.addFileToVFS("SourceSans3-Bold.ttf", DATASHEET_FONT_BOLD_BASE64);
+  pdf.addFont("SourceSans3-Bold.ttf", FONT, "bold");
 }
 
 // Pure, DOM-free PDF layout for a product datasheet. Images must be preloaded
@@ -181,7 +181,9 @@ export function buildDatasheetPdf(opts: {
       pdf.setFontSize(9);
       pdf.setFont(FONT,"bold");
       pdf.setTextColor(120, 120, 120);
+      pdf.setCharSpace(0.15);
       pdf.text(translateTerm(section.title, product.language), descX, descY);
+      pdf.setCharSpace(0);
       descY += 4;
     }
 
@@ -320,7 +322,9 @@ export function buildDatasheetPdf(opts: {
     pdf.setFontSize(9);
     pdf.setFont(FONT, "bold");
     pdf.setTextColor(120, 120, 120);
+    pdf.setCharSpace(0.15);
     pdf.text(labels.technicalData, margin, y);
+    pdf.setCharSpace(0);
     y += 3;
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.3);
@@ -357,6 +361,7 @@ export function buildDatasheetPdf(opts: {
       pdf.setFontSize(8);
       pdf.setFont(FONT, "bold");
       pdf.setTextColor(80, 80, 80);
+      pdf.setCharSpace(0.15);
       let colX = margin + labelColWidth;
       for (let i = 0; i < technicalDataColumns.length; i++) {
         const colWidth = dataColWidths[i];
@@ -368,6 +373,7 @@ export function buildDatasheetPdf(opts: {
         );
         colX += colWidth;
       }
+      pdf.setCharSpace(0);
       y += 5;
     };
 
