@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3, ChevronUp, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
 import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
@@ -301,6 +301,14 @@ export default function ProductForm() {
 
   const removeRow = (rowIndex: number) => {
     setTechnicalDataRows(technicalDataRows.filter((_, i) => i !== rowIndex));
+  };
+
+  const moveRow = (rowIndex: number, direction: -1 | 1) => {
+    const target = rowIndex + direction;
+    if (target < 0 || target >= technicalDataRows.length) return;
+    const newRows = [...technicalDataRows];
+    [newRows[rowIndex], newRows[target]] = [newRows[target], newRows[rowIndex]];
+    setTechnicalDataRows(newRows);
   };
 
 
@@ -642,7 +650,7 @@ export default function ProductForm() {
                             </div>
                           </th>
                         ))}
-                        <th className="w-10"></th>
+                        <th className="w-24"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -667,14 +675,37 @@ export default function ProductForm() {
                             </td>
                           ))}
                           <td className="py-1 px-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeRow(rowIndex)}
-                              className="h-6 w-6 text-gray-400 hover:text-red-500"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveRow(rowIndex, -1)}
+                                disabled={rowIndex === 0}
+                                title="Nach oben"
+                                className="h-6 w-6 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveRow(rowIndex, 1)}
+                                disabled={rowIndex === technicalDataRows.length - 1}
+                                title="Nach unten"
+                                className="h-6 w-6 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeRow(rowIndex)}
+                                title="Zeile löschen"
+                                className="h-6 w-6 text-gray-400 hover:text-red-500"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
