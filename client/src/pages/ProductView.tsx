@@ -298,13 +298,15 @@ export default function ProductView() {
       ) : null}
 
       {/* Datasheet Content */}
-      <div 
+      <div
         ref={datasheetRef}
         className="datasheet-container max-w-4xl mx-auto p-4 md:p-8 print:p-0 print:max-w-none bg-white"
+        style={{ fontFamily: "'Source Sans 3', ui-sans-serif, system-ui, sans-serif" }}
       >
-        {/* Header with Logo */}
+        {/* Header with Logo — logo sits in the right column, flush with the
+            description column below it (mirrors the PDF layout). */}
         <div className="mb-6">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-700 tracking-wide">
                 {translateTerm(productName, product.language)}
@@ -315,14 +317,13 @@ export default function ProductView() {
                 </h2>
               ) : null}
             </div>
-            {/* Logo oben rechts - Unterkante bündig mit Untertitel */}
             {logoUrl ? (
-              <div className="flex-shrink-0">
-                <img 
-                  src={logoUrl} 
-                  alt="Logo" 
-                  className="h-14 md:h-[4.5rem] object-contain"
-                  style={{ maxWidth: '180px' }}
+              <div className="md:w-[26%] flex-shrink-0">
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="w-full h-auto object-contain object-left"
+                  style={{ maxHeight: '72px' }}
                 />
               </div>
             ) : null}
@@ -330,16 +331,16 @@ export default function ProductView() {
           <div className="h-1 bg-gray-300 mt-4 w-full"></div>
         </div>
 
-        {/* Main Content: Image + Description */}
-        {/* Fixed-height image zone so scaling the image never moves the table. */}
-        <div className="flex flex-col md:flex-row gap-8 mb-8">
+        {/* Main Content: Image left, narrow description column right (flush
+            under the logo) — fixed-height image zone like the PDF. */}
+        <div className="flex flex-col md:flex-row mb-8">
           {/* Product Image */}
-          <div className="md:w-1/2 flex items-start justify-center" style={{ height: '510px' }}>
+          <div className="md:w-[58%] flex items-start justify-center mb-6 md:mb-0" style={{ height: '480px' }}>
             {imageUrl ? (
               <img
                 src={imageUrl}
                 alt={productName}
-                className="object-contain"
+                className="object-contain object-top"
                 style={{ maxHeight: '100%', width: `${imageScale}%`, maxWidth: '100%' }}
               />
             ) : (
@@ -349,8 +350,8 @@ export default function ProductView() {
             )}
           </div>
 
-          {/* Description Sections */}
-          <div className="md:w-1/2 space-y-4">
+          {/* Description Sections — narrow column, right-aligned under the logo */}
+          <div className="md:w-[26%] md:ml-auto space-y-4">
             {descriptionSections.length > 0 ? descriptionSections.map((section, index) => {
               const title = section.title || "";
               const items = Array.isArray(section.items) ? section.items : [];
