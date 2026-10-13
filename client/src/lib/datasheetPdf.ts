@@ -99,8 +99,6 @@ export function buildDatasheetPdf(opts: {
   let y = dividerY;
 
   // Logo — top-right, constrained by width, kept fully ABOVE the divider line.
-  // logoBoxWidth is reused to align the description column flush under the logo.
-  let logoBoxWidth = 50;
   if (opts.logo) {
     const aspect = opts.logo.width / opts.logo.height; // wide logo -> large aspect
     let logoWidth = 50; // target width in mm
@@ -111,7 +109,6 @@ export function buildDatasheetPdf(opts: {
       logoHeight = maxLogoHeight;
       logoWidth = logoHeight * aspect;
     }
-    logoBoxWidth = logoWidth;
     const logoX = pageWidth - margin - logoWidth;
     const logoY = margin; // top-aligned with the title
     pdf.addImage(
@@ -123,7 +120,6 @@ export function buildDatasheetPdf(opts: {
       logoHeight
     );
   }
-  const logoLeftX = pageWidth - margin - logoBoxWidth;
 
   // Divider line
   y = dividerY;
@@ -169,10 +165,10 @@ export function buildDatasheetPdf(opts: {
     );
   }
 
-  // Description sections on the right, flush-aligned under the logo's left edge.
+  // Description sections on the right, aligned under the logo column.
   let descY = startY;
-  const descX = logoLeftX;
-  const descMaxWidth = logoBoxWidth;
+  const descX = pageWidth - margin - 45;
+  const descMaxWidth = 45 - 5;
 
   const descriptionSections = Array.isArray(product.descriptionSections)
     ? product.descriptionSections.filter(s => s && typeof s === "object")
