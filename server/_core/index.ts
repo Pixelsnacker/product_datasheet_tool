@@ -80,15 +80,19 @@ async function startServer() {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // In production (Clever Cloud / Railway) the platform dictates the port and the
+  // app MUST bind to 0.0.0.0 on exactly that port, or the health check fails.
+  // Clever Cloud requires 0.0.0.0:8080. Only in local dev do we scan for a free port.
+  const isDev = process.env.NODE_ENV === "development";
+  const preferredPort = parseInt(process.env.PORT || (isDev ? "3000" : "8080"));
+  const port = isDev ? await findAvailablePort(preferredPort) : preferredPort;
 
-  if (port !== preferredPort) {
+  if (isDev && port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 

@@ -6,9 +6,11 @@ import { ENV } from './_core/env';
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  // Prefer DATABASE_URL; fall back to Clever Cloud's auto-injected MySQL add-on URI.
+  const connectionUrl = process.env.DATABASE_URL || process.env.MYSQL_ADDON_URI;
+  if (!_db && connectionUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(connectionUrl);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
