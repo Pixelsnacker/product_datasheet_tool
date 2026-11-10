@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Plus, FileText, Trash2, Edit, ExternalLink, Loader2, Search, X, Copy, Settings, ChevronDown, ChevronRight, FolderOpen, Folder, GripVertical } from "lucide-react";
+import { Plus, FileText, Trash2, Edit, ExternalLink, Loader2, Search, X, Copy, Settings, ChevronDown, ChevronRight, FolderOpen, Folder, GripVertical, AlertTriangle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -140,6 +140,35 @@ function SortableProductCard({
               {STATUS_META[product.status || "draft"].label}
             </span>
           </div>
+
+          {/* Draft completeness: show what is still missing (drafts only) */}
+          {(product.status || "draft") === "draft" && (() => {
+            const p = product as any;
+            const missing: string[] = [];
+            if (!p.imageUrl) missing.push("Bild");
+            const hasText = Array.isArray(p.descriptionSections) &&
+              p.descriptionSections.some((s: any) => Array.isArray(s?.items) && s.items.some((i: string) => (i || "").trim()));
+            if (!hasText) missing.push("Text");
+            const hasTech = Array.isArray(p.technicalDataRows) &&
+              p.technicalDataRows.some((r: any) => (r?.label || "").trim());
+            if (!hasTech) missing.push("Techn. Daten");
+            if (!p.documentNumber || !String(p.documentNumber).trim()) missing.push("Prospektnr.");
+            if (missing.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {missing.map((m) => (
+                  <span
+                    key={m}
+                    className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                    title={`${m} fehlt noch`}
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    {m} fehlt
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Category selector */}
           <div className="mb-3">
