@@ -141,7 +141,8 @@ export function buildDatasheetPdf(opts: {
 
   // Product image — keep aspect ratio, scaled by imageScale, but never larger
   // than the reserved zone.
-  const imageScale = product.imageScale || 100;
+  // Clamp to 100% (older drafts may hold values > 100); view and PDF stay in sync.
+  const imageScale = Math.min(100, product.imageScale || 100);
   const scaleFactor = imageScale / 100;
   const baseMaxImgWidth = 115; // mm at 100%
   const baseMaxImgHeight = 135; // mm at 100% (fills the image zone)

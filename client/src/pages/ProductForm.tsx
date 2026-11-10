@@ -166,7 +166,7 @@ export default function ProductForm() {
       setProductName(existingProduct.productName);
       setProductSubtitle(existingProduct.productSubtitle || "");
       setImageUrl(existingProduct.imageUrl || "");
-      setImageScale(existingProduct.imageScale || 100);
+      setImageScale(Math.min(100, existingProduct.imageScale || 100));
       setDescriptionSections(existingProduct.descriptionSections || DEFAULT_SECTIONS);
       setTechnicalDataColumns(existingProduct.technicalDataColumns || DEFAULT_COLUMNS);
       setColumnWidths((existingProduct.columnWidths as number[]) || []);
@@ -647,7 +647,7 @@ export default function ProductForm() {
                   
                   {imageUrl && (
                     <div className="mt-2 p-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <div className="flex items-center justify-center aspect-[115/135] max-w-full" style={{ height: '220px' }}>
+                      <div className="flex items-center justify-center aspect-[115/135] max-w-full overflow-hidden" style={{ height: '220px' }}>
                         <img
                           src={imageUrl}
                           alt="Vorschau"

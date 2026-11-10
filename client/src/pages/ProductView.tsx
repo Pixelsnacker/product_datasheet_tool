@@ -219,7 +219,9 @@ export default function ProductView() {
   const productName = product.productName || "Unbenanntes Produkt";
   const productSubtitle = product.productSubtitle || "";
   const imageUrl = product.imageUrl || "";
-  const imageScale = product.imageScale || 100;
+  // Clamp to 100% so the on-screen image never exceeds the zone — matches the PDF,
+  // which also caps the image at its zone (older drafts may hold values > 100).
+  const imageScale = Math.min(100, product.imageScale || 100);
   const documentNumber = product.documentNumber || "";
 
   const status = (product.status as "draft" | "review" | "approved") || "draft";
@@ -342,7 +344,7 @@ export default function ProductView() {
             {imageUrl ? (
               // Image zone matches the PDF proportion (115:135) so the preview and
               // the PDF scale identically. The image is scaled within it by imageScale%.
-              <div className="flex items-center justify-center aspect-[115/135] h-full max-w-full">
+              <div className="flex items-center justify-center aspect-[115/135] h-full max-w-full overflow-hidden">
                 <img
                   src={imageUrl}
                   alt={productName}

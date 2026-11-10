@@ -100,14 +100,14 @@ export default function DatasheetPreview({
           <div className="w-1/2 flex items-center justify-center" style={{ height: '383px' }}>
             {imageUrl ? (
               // Image zone matches the PDF proportion (115:135) so preview = PDF.
-              <div className="flex items-center justify-center aspect-[115/135] h-full max-w-full">
+              <div className="flex items-center justify-center aspect-[115/135] h-full max-w-full overflow-hidden">
                 <img
                   src={imageUrl}
                   alt={productName || "Produkt"}
                   className="object-contain"
                   style={{
-                    maxHeight: `${imageScale}%`,
-                    maxWidth: `${imageScale}%`,
+                    maxHeight: `${Math.min(100, imageScale)}%`,
+                    maxWidth: `${Math.min(100, imageScale)}%`,
                   }}
                 />
               </div>
