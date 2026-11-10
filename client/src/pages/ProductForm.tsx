@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
 import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
@@ -575,13 +575,13 @@ export default function ProductForm() {
                     />
                   </div>
                   
-                  {/* Image Scale Slider */}
+                  {/* Image size: exact number input + fine-step buttons + presets + slider */}
                   {imageUrl && (
-                    <div className="space-y-2 pt-2">
+                    <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm text-gray-600">Bildgröße: {imageScale}%</Label>
-                        <Button 
-                          variant="ghost" 
+                        <Label className="text-sm text-gray-600">Bildgröße</Label>
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => setImageScale(100)}
                           className="text-xs h-6"
@@ -589,12 +589,56 @@ export default function ProductForm() {
                           Zurücksetzen
                         </Button>
                       </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Exact value: − [number] % + */}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setImageScale(Math.max(10, imageScale - 1))}
+                            aria-label="Kleiner"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min={10}
+                              max={200}
+                              value={imageScale}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10);
+                                if (!isNaN(v)) setImageScale(Math.max(10, Math.min(200, v)));
+                              }}
+                              className="h-8 w-[72px] text-center pr-6"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setImageScale(Math.min(200, imageScale + 1))}
+                            aria-label="Größer"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {/* Quick presets */}
+                        <div className="flex gap-1 ml-auto">
+                          <Button type="button" variant={imageScale === 60 ? "default" : "outline"} size="sm" className="h-8 text-xs px-2" onClick={() => setImageScale(60)}>Klein</Button>
+                          <Button type="button" variant={imageScale === 80 ? "default" : "outline"} size="sm" className="h-8 text-xs px-2" onClick={() => setImageScale(80)}>Mittel</Button>
+                          <Button type="button" variant={imageScale === 100 ? "default" : "outline"} size="sm" className="h-8 text-xs px-2" onClick={() => setImageScale(100)}>Groß</Button>
+                        </div>
+                      </div>
+                      {/* Slider for quick dragging */}
                       <Slider
                         value={[imageScale]}
                         onValueChange={([value]) => setImageScale(value)}
                         min={10}
                         max={200}
-                        step={5}
+                        step={1}
                         className="w-full"
                       />
                     </div>

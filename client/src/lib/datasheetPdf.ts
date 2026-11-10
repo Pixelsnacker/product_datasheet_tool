@@ -159,11 +159,16 @@ export function buildDatasheetPdf(opts: {
       imgHeight = maxImgHeight;
       imgWidth = maxImgHeight * aspectRatio;
     }
+    // Center the image within its reserved zone (width baseMaxImgWidth, height
+    // IMAGE_ZONE_HEIGHT) so shrinking it keeps it centered instead of stuck in
+    // the top-left corner.
+    const imgX = margin + Math.max(0, (baseMaxImgWidth - imgWidth) / 2);
+    const imgY = y + Math.max(0, (IMAGE_ZONE_HEIGHT - imgHeight) / 2);
     pdf.addImage(
       opts.productImage.dataUrl,
       imgFormat(opts.productImage.dataUrl),
-      margin,
-      y,
+      imgX,
+      imgY,
       imgWidth,
       imgHeight
     );

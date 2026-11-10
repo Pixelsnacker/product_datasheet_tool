@@ -338,12 +338,12 @@ export default function ProductView() {
             under the logo) — fixed-height image zone like the PDF. */}
         <div className="flex flex-col md:flex-row mb-8">
           {/* Product Image */}
-          <div className="md:w-[58%] flex items-start justify-center mb-6 md:mb-0" style={{ height: '480px' }}>
+          <div className="md:w-[58%] flex items-center justify-center mb-6 md:mb-0" style={{ height: '480px' }}>
             {imageUrl ? (
               <img
                 src={imageUrl}
                 alt={productName}
-                className="object-contain object-top"
+                className="object-contain"
                 style={{ maxHeight: '100%', width: `${imageScale}%`, maxWidth: '100%' }}
               />
             ) : (
