@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "app_id": "app_6ae558b1-3a2a-47fd-b911-e910b11f5f71",
+      "org_id": "user_1264ed2a-a831-41e1-92c2-f1f2ad932f4a",
+      "deploy_url": "https://github.com/Pixelsnacker/product_datasheet_tool.git",
+      "git_ssh_url": "https://github.com/Pixelsnacker/product_datasheet_tool.git",
+      "name": "product_datasheet_tool",
+      "alias": "productdatasheettool"
+    }
+  ]
+}
