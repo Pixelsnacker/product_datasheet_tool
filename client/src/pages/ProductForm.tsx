@@ -201,6 +201,11 @@ export default function ProductForm() {
       return;
     }
 
+    if (!documentNumber.trim()) {
+      toast.error("Bitte geben Sie eine Prospektnummer ein");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const productData = {
@@ -767,12 +772,13 @@ export default function ProductForm() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="documentNumber">Prospektnummer</Label>
+                  <Label htmlFor="documentNumber">Prospektnummer *</Label>
                   <Input
                     id="documentNumber"
                     value={documentNumber}
                     onChange={(e) => setDocumentNumber(e.target.value)}
                     placeholder="z.B. 06/2025 | Prospekt Nr. 523"
+                    required
                   />
                 </div>
               </CardContent>
