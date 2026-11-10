@@ -401,13 +401,20 @@ export function buildDatasheetPdf(opts: {
         pdf.setFont(FONT, "normal");
       }
 
-      if (visibleIndex % 2 === 0) {
+      if (visibleIndex === 0) {
+        // First row (e.g. "Typ"): always highlighted grey, regardless of zebra.
+        pdf.setFillColor(230, 230, 230);
+        pdf.rect(margin, y - 3.5, contentWidth, rowHeight, "F");
+      } else if (visibleIndex % 2 === 0) {
         pdf.setFillColor(245, 245, 245);
         pdf.rect(margin, y - 3.5, contentWidth, rowHeight, "F");
       }
 
       pdf.setTextColor(60, 60, 60);
+      // First-row label is bold; values and all other labels stay normal.
+      pdf.setFont(FONT, visibleIndex === 0 ? "bold" : "normal");
       pdf.text(translateTerm(row.label, product.language), margin + 2, y);
+      pdf.setFont(FONT, "normal");
 
       const values = Array.isArray(row.values) ? row.values : [];
       const numValueCols = Math.max(technicalDataColumns.length, values.length);

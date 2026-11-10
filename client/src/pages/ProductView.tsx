@@ -196,10 +196,13 @@ export default function ProductView() {
     ? product.technicalDataColumns 
     : [];
   
-  const technicalDataRows: TechnicalDataRow[] = Array.isArray(product.technicalDataRows) 
+  const technicalDataRows: TechnicalDataRow[] = Array.isArray(product.technicalDataRows)
     ? (product.technicalDataRows as TechnicalDataRow[]).filter(row => row && typeof row === 'object')
     : [];
-  
+  // The first visible technical-data row (e.g. "Typ") is always highlighted grey
+  // with a bold label.
+  const firstTechRowIndex = technicalDataRows.findIndex(r => ((r?.label as string) || "").trim() !== "");
+
   const descriptionSections: DescriptionSection[] = Array.isArray(product.descriptionSections) 
     ? (product.descriptionSections as DescriptionSection[]).filter(s => s && typeof s === 'object')
     : [];
@@ -413,9 +416,10 @@ export default function ProductView() {
                   
                   if (!label.trim()) return null;
                   
+                  const isFirstRow = index === firstTechRowIndex;
                   return (
-                    <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                      <td className="py-2 px-3 text-gray-700 border-b border-gray-100">
+                    <tr key={index} className={isFirstRow ? "bg-gray-100" : index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                      <td className={`py-2 px-3 border-b border-gray-100 ${isFirstRow ? "font-bold text-gray-900" : "text-gray-700"}`}>
                         {translateTerm(label, product.language)}
                       </td>
                       {values.map((value, vIdx) => (
