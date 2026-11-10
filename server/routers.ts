@@ -212,16 +212,21 @@ export const appRouter = router({
           throw new Error("Product not found or unauthorized");
         }
         
-        // Create a copy with modified name
+        // Create a copy with modified name. Copy all content fields, including
+        // the category, so the duplicate lands in the same category as the original.
         const newProduct = await db.createProduct({
           userId: ctx.user.id,
           productName: `${product.productName} (Kopie)`,
           productSubtitle: product.productSubtitle || undefined,
+          category: product.category || undefined,
+          industryCategories: product.industryCategories || undefined,
           imageUrl: product.imageUrl || undefined,
           imageScale: product.imageScale || undefined,
           descriptionSections: product.descriptionSections || undefined,
           technicalDataColumns: product.technicalDataColumns || undefined,
+          columnWidths: product.columnWidths || undefined,
           technicalDataRows: product.technicalDataRows || undefined,
+          language: product.language || undefined,
           documentNumber: product.documentNumber || undefined,
         });
         
