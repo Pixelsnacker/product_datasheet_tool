@@ -340,12 +340,16 @@ export default function ProductView() {
           {/* Product Image */}
           <div className="md:w-[58%] flex items-center justify-center mb-6 md:mb-0" style={{ height: '480px' }}>
             {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt={productName}
-                className="object-contain"
-                style={{ maxHeight: '100%', width: `${imageScale}%`, maxWidth: '100%' }}
-              />
+              // Image zone matches the PDF proportion (115:135) so the preview and
+              // the PDF scale identically. The image is scaled within it by imageScale%.
+              <div className="flex items-center justify-center aspect-[115/135] h-full max-w-full">
+                <img
+                  src={imageUrl}
+                  alt={productName}
+                  className="object-contain"
+                  style={{ maxHeight: `${imageScale}%`, maxWidth: `${imageScale}%` }}
+                />
+              </div>
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
                 Kein Bild vorhanden

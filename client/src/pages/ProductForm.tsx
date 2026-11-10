@@ -276,6 +276,7 @@ export default function ProductForm() {
           });
 
           setImageUrl(result.url);
+          setImageScale(100); // new images start at maximum size (fills the zone)
           toast.success("Produktbild hochgeladen");
         } catch (error) {
           toast.error("Fehler beim Hochladen");
@@ -605,11 +606,11 @@ export default function ProductForm() {
                             <Input
                               type="number"
                               min={10}
-                              max={200}
+                              max={100}
                               value={imageScale}
                               onChange={(e) => {
                                 const v = parseInt(e.target.value, 10);
-                                if (!isNaN(v)) setImageScale(Math.max(10, Math.min(200, v)));
+                                if (!isNaN(v)) setImageScale(Math.max(10, Math.min(100, v)));
                               }}
                               className="h-8 w-[72px] text-center pr-6"
                             />
@@ -619,7 +620,7 @@ export default function ProductForm() {
                             type="button"
                             variant="outline"
                             className="h-8 w-8 p-0"
-                            onClick={() => setImageScale(Math.min(200, imageScale + 1))}
+                            onClick={() => setImageScale(Math.min(100, imageScale + 1))}
                             aria-label="Größer"
                           >
                             <Plus className="h-4 w-4" />
@@ -637,7 +638,7 @@ export default function ProductForm() {
                         value={[imageScale]}
                         onValueChange={([value]) => setImageScale(value)}
                         min={10}
-                        max={200}
+                        max={100}
                         step={1}
                         className="w-full"
                       />
@@ -645,13 +646,15 @@ export default function ProductForm() {
                   )}
                   
                   {imageUrl && (
-                    <div className="mt-2 p-4 bg-gray-100 rounded-lg">
-                      <img 
-                        src={imageUrl} 
-                        alt="Vorschau" 
-                        className="max-h-48 object-contain mx-auto"
-                        style={{ width: `${imageScale}%`, maxWidth: '100%' }}
-                      />
+                    <div className="mt-2 p-4 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="flex items-center justify-center aspect-[115/135] max-w-full" style={{ height: '220px' }}>
+                        <img
+                          src={imageUrl}
+                          alt="Vorschau"
+                          className="object-contain"
+                          style={{ maxHeight: `${imageScale}%`, maxWidth: `${imageScale}%` }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
