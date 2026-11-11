@@ -351,7 +351,7 @@ export default function ProductForm() {
       const productData = {
         productName,
         productSubtitle: productSubtitle || undefined,
-        imageUrl: imageUrl || undefined,
+        imageUrl: imageUrl || "", // leeres Feld bewusst als "" senden, damit ein entferntes Bild wirklich gelöscht wird (undefined würde vom Server ignoriert)
         imageScale: imageScale,
         descriptionSections: descriptionSections.filter(s => s.items.some(i => i.trim())),
         technicalDataColumns: technicalDataColumns.filter(c => c.trim()),
@@ -745,6 +745,17 @@ export default function ProductForm() {
                       onChange={(e) => setImageUrl(e.target.value)}
                       placeholder="https://example.com/bild.jpg"
                     />
+                    {imageUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => { setImageUrl(""); setImageScale(100); }}
+                        className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Bild entfernen
+                      </Button>
+                    )}
                   </div>
                   
                   {/* Image size: exact number input + fine-step buttons + presets + slider */}
