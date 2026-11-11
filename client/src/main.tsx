@@ -33,7 +33,15 @@ if (typeof Node === "function" && Node.prototype) {
   };
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Beim Zurückkehren zu einem Browser-Tab NICHT automatisch neu laden.
+      // Sonst würden ungespeicherte Eingaben im Konfigurator überschrieben.
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {

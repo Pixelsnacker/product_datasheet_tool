@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Minus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3 } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3, RotateCcw, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
 import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
@@ -154,39 +154,179 @@ export default function ProductForm() {
     { id: parseInt(id || "0") },
     { enabled: isEditing }
   );
-  
+
   // Load template data if creating from template
-  const { data: templateData, isLoading: isLoadingTemplate } = trpc.templates.getById.useQuery(
+  const { data: templateData } = trpc.templates.getById.useQuery(
     { id: parseInt(templateId || "0") },
     { enabled: !isEditing && !!templateId }
   );
 
+  // --- Entwurf-Sicherung (lokal im Browser) -------------------------------
+  // Eindeutiger Schlüssel pro Datenblatt bzw. pro "Neu"-Formular.
+  const draftKey = isEditing
+    ? `pdt-draft-edit-${id}`
+    : templateId
+      ? `pdt-draft-new-tpl-${templateId}`
+      : "pdt-draft-new";
+
+  const didLoadRef = useRef(false);        // Lade-Guard: Felder nur EINMAL befüllen
+  const draftReadyRef = useRef(false);     // ab wann automatisch lokal gesichert wird
+  const storedDraftRef = useRef<any | null>(null); // beim Öffnen vorgefundener Entwurf
+  const savedRef = useRef(false);          // nach echtem Speichern keinen Entwurf mehr schreiben
+  const [recoverableDraft, setRecoverableDraft] = useState<any | null>(null);
+
+  // Vergleichs-Fingerabdruck (nur inhaltliche Felder, ohne interne Zeilen-IDs)
+  const contentFingerprint = (s: any) => JSON.stringify({
+    productName: s.productName || "",
+    productSubtitle: s.productSubtitle || "",
+    imageUrl: s.imageUrl || "",
+    imageScale: s.imageScale,
+    descriptionSections: s.descriptionSections || [],
+    technicalDataColumns: s.technicalDataColumns || [],
+    columnWidths: s.columnWidths || [],
+    technicalDataRows: (s.technicalDataRows || []).map((r: any) => ({ label: r.label, values: r.values })),
+    documentNumber: s.documentNumber || "",
+    category: s.category ?? null,
+    language: s.language || "de",
+  });
+
+  // Beim Öffnen einen evtl. vorhandenen Entwurf aus dem Browser lesen.
   useEffect(() => {
-    if (existingProduct) {
-      setProductName(existingProduct.productName);
-      setProductSubtitle(existingProduct.productSubtitle || "");
-      setImageUrl(existingProduct.imageUrl || "");
-      setImageScale(Math.min(100, existingProduct.imageScale || 100));
-      setDescriptionSections(existingProduct.descriptionSections || DEFAULT_SECTIONS);
-      setTechnicalDataColumns(existingProduct.technicalDataColumns || DEFAULT_COLUMNS);
-      setColumnWidths((existingProduct.columnWidths as number[]) || []);
-      setTechnicalDataRows(withRowIds((existingProduct.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA));
-      setDocumentNumber(existingProduct.documentNumber || "");
-      setCategory((existingProduct as any).category || null);
-      setLanguage(((existingProduct as any).language as DatasheetLanguage) || "de");
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) storedDraftRef.current = JSON.parse(raw);
+    } catch { /* localStorage nicht verfügbar – dann eben ohne Entwurf */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // Prüft, ob der vorgefundene Entwurf von der geladenen Grundlage abweicht,
+  // und bietet ihn dann zur Wiederherstellung an (sonst verwerfen).
+  const offerDraftIfDifferent = (baseline: any) => {
+    const d = storedDraftRef.current;
+    if (!d) return;
+    try {
+      if (contentFingerprint(d) !== contentFingerprint(baseline)) {
+        setRecoverableDraft(d);
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch { /* ignorieren */ }
+  };
+
+  // Vorhandenes Produkt EINMAL in die Felder laden (Lade-Guard verhindert,
+  // dass ein späteres Neuladen die Eingaben überschreibt).
+  useEffect(() => {
+    if (existingProduct && !didLoadRef.current) {
+      didLoadRef.current = true;
+      const baseline = {
+        productName: existingProduct.productName,
+        productSubtitle: existingProduct.productSubtitle || "",
+        imageUrl: existingProduct.imageUrl || "",
+        imageScale: Math.min(100, existingProduct.imageScale || 100),
+        descriptionSections: existingProduct.descriptionSections || DEFAULT_SECTIONS,
+        technicalDataColumns: existingProduct.technicalDataColumns || DEFAULT_COLUMNS,
+        columnWidths: (existingProduct.columnWidths as number[]) || [],
+        technicalDataRows: ((existingProduct.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA),
+        documentNumber: existingProduct.documentNumber || "",
+        category: (existingProduct as any).category || null,
+        language: ((existingProduct as any).language as DatasheetLanguage) || "de",
+      };
+      setProductName(baseline.productName);
+      setProductSubtitle(baseline.productSubtitle);
+      setImageUrl(baseline.imageUrl);
+      setImageScale(baseline.imageScale);
+      setDescriptionSections(baseline.descriptionSections);
+      setTechnicalDataColumns(baseline.technicalDataColumns);
+      setColumnWidths(baseline.columnWidths);
+      setTechnicalDataRows(withRowIds(baseline.technicalDataRows));
+      setDocumentNumber(baseline.documentNumber);
+      setCategory(baseline.category);
+      setLanguage(baseline.language);
+      offerDraftIfDifferent(baseline);
+      draftReadyRef.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingProduct]);
-  
-  // Load template data when creating from template
+
+  // Load template data when creating from template (ebenfalls nur EINMAL).
   useEffect(() => {
-    if (templateData && !isEditing) {
+    if (templateData && !isEditing && !didLoadRef.current) {
+      didLoadRef.current = true;
       setDescriptionSections(templateData.descriptionSections || DEFAULT_SECTIONS);
       setTechnicalDataColumns(templateData.technicalDataColumns || DEFAULT_COLUMNS);
       setColumnWidths((templateData.columnWidths as number[]) || []);
       setTechnicalDataRows(withRowIds((templateData.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA));
       toast.success(`Vorlage "${templateData.name}" geladen`);
+      offerDraftIfDifferent({
+        productName: "", productSubtitle: "", imageUrl: "", imageScale: 100,
+        descriptionSections: templateData.descriptionSections || DEFAULT_SECTIONS,
+        technicalDataColumns: templateData.technicalDataColumns || DEFAULT_COLUMNS,
+        columnWidths: (templateData.columnWidths as number[]) || [],
+        technicalDataRows: (templateData.technicalDataRows as TechnicalDataRow[]) || DEFAULT_TECHNICAL_DATA,
+        documentNumber: "", category: null, language: "de",
+      });
+      draftReadyRef.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateData, isEditing]);
+
+  // Neues, leeres Formular (ohne Vorlage): sofort als "geladen" markieren.
+  useEffect(() => {
+    if (!isEditing && !templateId && !didLoadRef.current) {
+      didLoadRef.current = true;
+      offerDraftIfDifferent({
+        productName: "", productSubtitle: "", imageUrl: "", imageScale: 100,
+        descriptionSections: DEFAULT_SECTIONS, technicalDataColumns: DEFAULT_COLUMNS,
+        columnWidths: [], technicalDataRows: DEFAULT_TECHNICAL_DATA,
+        documentNumber: "", category: null, language: "de",
+      });
+      draftReadyRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Laufende Eingaben still im Browser sichern (leicht verzögert).
+  useEffect(() => {
+    if (!draftReadyRef.current || savedRef.current || recoverableDraft) return;
+    const snapshot = {
+      productName, productSubtitle, imageUrl, imageScale,
+      descriptionSections, technicalDataColumns, columnWidths,
+      technicalDataRows, documentNumber, category, language,
+      savedAt: Date.now(),
+    };
+    const t = setTimeout(() => {
+      if (savedRef.current) return;
+      try { localStorage.setItem(draftKey, JSON.stringify(snapshot)); } catch { /* ignorieren */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [productName, productSubtitle, imageUrl, imageScale, descriptionSections,
+      technicalDataColumns, columnWidths, technicalDataRows, documentNumber,
+      category, language, draftKey, recoverableDraft]);
+
+  // Entwurf in die Felder übernehmen.
+  const restoreDraft = () => {
+    const d = recoverableDraft;
+    if (!d) return;
+    setProductName(d.productName || "");
+    setProductSubtitle(d.productSubtitle || "");
+    setImageUrl(d.imageUrl || "");
+    setImageScale(Math.min(100, d.imageScale || 100));
+    setDescriptionSections(d.descriptionSections || DEFAULT_SECTIONS);
+    setTechnicalDataColumns(d.technicalDataColumns || DEFAULT_COLUMNS);
+    setColumnWidths(d.columnWidths || []);
+    setTechnicalDataRows(withRowIds(d.technicalDataRows || DEFAULT_TECHNICAL_DATA));
+    setDocumentNumber(d.documentNumber || "");
+    setCategory(d.category ?? null);
+    setLanguage(d.language || "de");
+    setRecoverableDraft(null);
+    toast.success("Entwurf wiederhergestellt");
+  };
+
+  // Entwurf verwerfen.
+  const discardDraft = () => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignorieren */ }
+    setRecoverableDraft(null);
+  };
 
   // Mutations
   const createProduct = trpc.products.create.useMutation();
@@ -231,6 +371,10 @@ export default function ProductForm() {
         const result = await createProduct.mutateAsync(productData);
         productId = result.id;
       }
+
+      // Gespeichert -> lokalen Entwurf entfernen und keinen neuen mehr schreiben.
+      savedRef.current = true;
+      try { localStorage.removeItem(draftKey); } catch { /* ignorieren */ }
 
       utils.products.list.invalidate();
       utils.products.getById.invalidate({ id: productId });
@@ -469,6 +613,33 @@ export default function ProductForm() {
       </header>
 
       <main className="container py-8">
+        {recoverableDraft && (
+          <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <RotateCcw className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Nicht gespeicherter Entwurf gefunden
+              </p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Beim letzten Mal wurden Eingaben nicht gespeichert
+                {recoverableDraft.savedAt
+                  ? ` (zuletzt bearbeitet am ${new Date(recoverableDraft.savedAt).toLocaleString("de-DE")})`
+                  : ""}
+                . Möchten Sie diese wiederherstellen?
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" className="h-8 bg-amber-600 hover:bg-amber-700 text-white" onClick={restoreDraft}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  Wiederherstellen
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={discardDraft}>
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Verwerfen
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex gap-8">
           {/* Left side: Form */}
           <div className={`flex-1 space-y-6 ${activeTab === 'preview' ? 'hidden md:block' : ''}`}>
