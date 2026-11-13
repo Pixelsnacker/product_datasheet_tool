@@ -3,11 +3,11 @@
 
 export type DatasheetLanguage = "de" | "en" | "pl" | "es";
 
-export const DATASHEET_LANGUAGES: { value: DatasheetLanguage; label: string }[] = [
-  { value: "de", label: "DE - Deutsch" },
-  { value: "en", label: "EN - English" },
-  { value: "pl", label: "PL - Polski" },
-  { value: "es", label: "ES - Español" },
+export const DATASHEET_LANGUAGES: { value: DatasheetLanguage; label: string; flag: string }[] = [
+  { value: "de", label: "DE - Deutsch", flag: "🇩🇪" },
+  { value: "en", label: "EN - English", flag: "🇬🇧" },
+  { value: "pl", label: "PL - Polski", flag: "🇵🇱" },
+  { value: "es", label: "ES - Español", flag: "🇪🇸" },
 ];
 
 interface DatasheetLabels {

@@ -758,7 +758,9 @@ export default function ProductForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {DATASHEET_LANGUAGES.map((l) => (
-                        <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                        <SelectItem key={l.value} value={l.value}>
+                          <span className="mr-2" aria-hidden="true">{l.flag}</span>{l.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
