@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Minus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, Loader2, Save, GripVertical, Upload, Eye, Edit3, RotateCcw, X, Languages } from "lucide-react";
+import { hashSource, buildOverrideMap, translateProductContent, type DatasheetContent } from "@/lib/translateDatasheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PRODUCT_CATEGORIES } from "@/pages/Dashboard";
 import { DATASHEET_LANGUAGES, type DatasheetLanguage } from "@/lib/datasheetI18n";
@@ -144,7 +145,9 @@ export default function ProductForm() {
   const [documentNumber, setDocumentNumber] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [language, setLanguage] = useState<DatasheetLanguage>("de");
-  
+  const [translations, setTranslations] = useState<Record<string, any>>({});
+  const [isTranslating, setIsTranslating] = useState(false);
+
   // UI state
   const [activeTab, setActiveTab] = useState("edit");
   const [isUploading, setIsUploading] = useState(false);
@@ -242,6 +245,7 @@ export default function ProductForm() {
       setDocumentNumber(baseline.documentNumber);
       setCategory(baseline.category);
       setLanguage(baseline.language);
+      setTranslations(((existingProduct as any).translations as Record<string, any>) || {});
       offerDraftIfDifferent(baseline);
       draftReadyRef.current = true;
     }
@@ -332,6 +336,64 @@ export default function ProductForm() {
   const createProduct = trpc.products.create.useMutation();
   const updateProduct = trpc.products.update.useMutation();
   const uploadImage = trpc.upload.image.useMutation();
+
+  // ── Automatische Übersetzung (DeepL) für die Live-Vorschau ────────────────
+  const translateStatus = trpc.translate.status.useQuery();
+  const deeplMutation = trpc.translate.deepl.useMutation();
+  const setTranslationMutation = trpc.products.setTranslation.useMutation();
+  const autoTriedRef = useRef<Set<string>>(new Set());
+
+  // Aktueller übersetzbarer Inhalt aus dem lokalen Editor-Zustand.
+  const currentContent = (): DatasheetContent => ({
+    productName,
+    productSubtitle,
+    descriptionSections,
+    technicalDataColumns,
+    technicalDataRows: technicalDataRows.map(r => ({ label: r.label, values: r.values })),
+  });
+
+  const translateEditor = async (lang: "en" | "pl" | "es") => {
+    const source = currentContent();
+    setIsTranslating(true);
+    try {
+      const content = await translateProductContent(source, lang, async (texts) => {
+        const r = await deeplMutation.mutateAsync({ texts, targetLang: lang });
+        return r.translations;
+      });
+      setTranslations(prev => ({ ...prev, [lang]: content }));
+      if (isEditing && id) {
+        // auch dauerhaft speichern, damit Ansicht/PDF denselben Stand nutzen
+        await setTranslationMutation.mutateAsync({ id: parseInt(id), lang, content });
+      }
+    } catch (e: any) {
+      toast.error("Übersetzung fehlgeschlagen: " + (e?.message || ""));
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Beim Umschalten auf eine Fremdsprache automatisch übersetzen (einmal je Sprache+Stand).
+  useEffect(() => {
+    if (!didLoadRef.current) return;
+    if (language === "de") return;
+    if (!translateStatus.data?.enabled) return;
+    const source = currentContent();
+    const key = language + ":" + hashSource(source);
+    const stored = translations[language];
+    if (stored && stored.sourceHash === hashSource(source)) return; // schon aktuell
+    if (isTranslating || autoTriedRef.current.has(key)) return;
+    autoTriedRef.current.add(key);
+    translateEditor(language as "en" | "pl" | "es");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, translateStatus.data?.enabled]);
+
+  // Nachschlage-Tabelle für die Live-Vorschau (falls aktuelle Übersetzung vorliegt).
+  const previewStored = translations[language];
+  const previewFresh =
+    language !== "de" && previewStored && previewStored.sourceHash === hashSource(currentContent());
+  const previewOverride: Record<string, string> | null = previewFresh
+    ? buildOverrideMap(currentContent(), previewStored)
+    : null;
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -700,6 +762,29 @@ export default function ProductForm() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {language !== "de" && (
+                    <div className="flex items-center gap-2 pt-1">
+                      {isTranslating ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Übersetze automatisch (DeepL)…
+                        </span>
+                      ) : translateStatus.data?.enabled ? (
+                        <>
+                          {previewFresh && (
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <Languages className="h-3 w-3" /> Auto-übersetzt
+                            </span>
+                          )}
+                          <Button type="button" variant="outline" size="sm" className="h-7 text-xs"
+                            onClick={() => translateEditor(language as "en" | "pl" | "es")}>
+                            <Languages className="h-3.5 w-3.5 mr-1.5" /> Neu übersetzen
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-amber-600">DeepL nicht eingerichtet</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* Category */}
                 <div className="space-y-2">
@@ -1047,6 +1132,7 @@ export default function ProductForm() {
                   technicalDataRows={technicalDataRows}
                   documentNumber={documentNumber}
                   language={language}
+                  translationOverride={previewOverride}
                   scale={0.55}
                 />
               </div>
