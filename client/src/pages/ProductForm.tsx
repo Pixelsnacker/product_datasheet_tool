@@ -488,10 +488,21 @@ export default function ProductForm() {
     })));
   };
 
+  // Effektive Spaltenzahl: nicht nur aus den (evtl. leeren) Spaltenköpfen,
+  // sondern auch aus der tatsächlichen Werte-Anzahl der Zeilen. So lassen sich
+  // auch Datenblätter OHNE gesetzte Spaltenköpfe (importierte/ältere) spaltenweise
+  // bearbeiten und löschen.
+  const effectiveColumnCount = Math.max(
+    technicalDataColumns.length,
+    technicalDataRows.reduce((m, r) => Math.max(m, r.values?.length || 0), 0)
+  );
+
   const removeColumn = (colIndex: number) => {
-    if (technicalDataColumns.length <= 1) return;
+    if (effectiveColumnCount <= 1) return;
+    // filter() lässt den Index unverändert, falls technicalDataColumns kürzer ist
+    // (z. B. [] bei kopfzeilenlosen Blättern) – dann werden nur die Zeilen-Werte gekürzt.
     setTechnicalDataColumns(technicalDataColumns.filter((_, i) => i !== colIndex));
-    setColumnWidths(columnWidths.filter((_, i) => i !== colIndex)); // Remove corresponding width
+    setColumnWidths(columnWidths.filter((_, i) => i !== colIndex));
     setTechnicalDataRows(technicalDataRows.map(row => ({
       ...row,
       values: row.values.filter((_, i) => i !== colIndex)
@@ -500,6 +511,7 @@ export default function ProductForm() {
 
   const updateColumnHeader = (colIndex: number, value: string) => {
     const newColumns = [...technicalDataColumns];
+    while (newColumns.length <= colIndex) newColumns.push(""); // auf Länge auffüllen, falls Köpfe fehlten
     newColumns[colIndex] = value;
     setTechnicalDataColumns(newColumns);
   };
@@ -931,11 +943,11 @@ export default function ProductForm() {
                       <tr className="border-b">
                         <th className="w-8"></th>
                         <th className="text-left py-2 px-2 w-48">Eigenschaft</th>
-                        {technicalDataColumns.map((col, colIndex) => (
+                        {Array.from({ length: effectiveColumnCount }).map((_, colIndex) => (
                           <th key={colIndex} className="py-2 px-1">
                             <div className="flex flex-col gap-1">
                               <Input
-                                value={col}
+                                value={technicalDataColumns[colIndex] ?? ""}
                                 onChange={(e) => updateColumnHeader(colIndex, e.target.value)}
                                 placeholder="Spalte"
                                 className="text-center text-sm h-8"
@@ -945,6 +957,7 @@ export default function ProductForm() {
                                 value={columnWidths[colIndex] || ''}
                                 onChange={(e) => {
                                   const newWidths = [...columnWidths];
+                                  while (newWidths.length <= colIndex) newWidths.push(0); // auffüllen, falls Breiten fehlten
                                   newWidths[colIndex] = parseInt(e.target.value) || 0;
                                   setColumnWidths(newWidths);
                                 }}
@@ -953,7 +966,7 @@ export default function ProductForm() {
                                 min="5"
                                 max="50"
                               />
-                              {technicalDataColumns.length > 1 && (
+                              {effectiveColumnCount > 1 && (
                                 <Button
                                   type="button"
                                   variant="outline"
