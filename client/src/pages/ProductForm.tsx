@@ -934,24 +934,12 @@ export default function ProductForm() {
                         {technicalDataColumns.map((col, colIndex) => (
                           <th key={colIndex} className="py-2 px-1">
                             <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={col}
-                                  onChange={(e) => updateColumnHeader(colIndex, e.target.value)}
-                                  placeholder="Spalte"
-                                  className="text-center text-sm h-8"
-                                />
-                                {technicalDataColumns.length > 1 && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeColumn(colIndex)}
-                                    className="h-6 w-6 text-gray-400 hover:text-red-500"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
+                              <Input
+                                value={col}
+                                onChange={(e) => updateColumnHeader(colIndex, e.target.value)}
+                                placeholder="Spalte"
+                                className="text-center text-sm h-8"
+                              />
                               <Input
                                 type="number"
                                 value={columnWidths[colIndex] || ''}
@@ -965,6 +953,19 @@ export default function ProductForm() {
                                 min="5"
                                 max="50"
                               />
+                              {technicalDataColumns.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeColumn(colIndex)}
+                                  title="Diese Spalte löschen"
+                                  className="h-7 w-full px-1 text-[11px] whitespace-nowrap border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-1"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Spalte löschen
+                                </Button>
+                              )}
                             </div>
                           </th>
                         ))}
