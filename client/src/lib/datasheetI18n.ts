@@ -115,12 +115,19 @@ const isAllCaps = (value: string): boolean => {
  */
 export function translateTerm(
   text: string | null | undefined,
-  lang?: string | null
+  lang?: string | null,
+  override?: Record<string, string> | null
 ): string {
   if (!text) return text ?? "";
   const language = (lang as DatasheetLanguage) || "de";
   if (language === "de") return text;
   if (language !== "en" && language !== "pl" && language !== "es") return text;
+
+  // Gespeicherte (DeepL-)Übersetzung hat Vorrang vor dem Glossar.
+  if (override) {
+    const hit = override[text.trim()];
+    if (hit !== undefined) return hit;
+  }
 
   return text
     .split("\n")

@@ -4,7 +4,9 @@ import { ArrowLeft, Loader2, Copy, Check, Download, Send, Undo2, BadgeCheck } fr
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Link, useParams } from "wouter";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { hashSource, buildOverrideMap, translateProductContent, type DatasheetContent } from "@/lib/translateDatasheet";
+import { Languages } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { buildDatasheetPdf, type DatasheetProduct } from "@/lib/datasheetPdf";
@@ -97,6 +99,61 @@ export default function ProductView() {
     toast.success("Datenblatt freigegeben");
   };
 
+  // ── Automatische Übersetzung (DeepL) ──────────────────────────────────────
+  const translateStatus = trpc.translate.status.useQuery();
+  const deeplMutation = trpc.translate.deepl.useMutation();
+  const setTranslationMutation = trpc.products.setTranslation.useMutation();
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+  const autoTriedRef = useRef<string>("");
+
+  const toContent = (p: any): DatasheetContent => ({
+    productName: p.productName || "",
+    productSubtitle: p.productSubtitle || "",
+    descriptionSections: Array.isArray(p.descriptionSections) ? p.descriptionSections : [],
+    technicalDataColumns: Array.isArray(p.technicalDataColumns) ? p.technicalDataColumns : [],
+    technicalDataRows: Array.isArray(p.technicalDataRows)
+      ? p.technicalDataRows.filter((r: any) => r && typeof r === "object")
+      : [],
+  });
+
+  const runTranslation = async (p: any) => {
+    const lang = p.language as "en" | "pl" | "es";
+    const source = toContent(p);
+    setTranslateError(null);
+    setIsTranslating(true);
+    try {
+      const content = await translateProductContent(source, lang, async (texts) => {
+        const r = await deeplMutation.mutateAsync({ texts, targetLang: lang });
+        return r.translations;
+      });
+      await setTranslationMutation.mutateAsync({ id: p.id, lang, content });
+      await utils.products.getById.invalidate({ id: p.id });
+    } catch (e: any) {
+      setTranslateError(e?.message || "Übersetzung fehlgeschlagen");
+      toast.error("Übersetzung fehlgeschlagen: " + (e?.message || ""));
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Beim Öffnen automatisch übersetzen, wenn Sprache != Deutsch und noch keine
+  // aktuelle Übersetzung vorliegt (pro Quellstand nur einmal automatisch).
+  useEffect(() => {
+    if (!product) return;
+    const lang = product.language;
+    if (lang === "de") return;
+    if (!translateStatus.data?.enabled) return;
+    const source = toContent(product);
+    const key = lang + ":" + hashSource(source);
+    const stored = (product.translations as any)?.[lang];
+    const fresh = stored && stored.sourceHash === hashSource(source);
+    if (fresh || isTranslating || autoTriedRef.current === key) return;
+    autoTriedRef.current = key;
+    runTranslation(product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product, translateStatus.data?.enabled]);
+
   const handleCopyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -151,11 +208,20 @@ export default function ProductView() {
           : Promise.resolve(null),
       ]);
 
+      // Gespeicherte DeepL-Übersetzung (falls aktuell) auch ins PDF übernehmen.
+      const pdfSource = toContent(product);
+      const pdfStored = (product.translations as any)?.[product.language];
+      const pdfOverride =
+        product.language !== "de" && pdfStored && pdfStored.sourceHash === hashSource(pdfSource)
+          ? buildOverrideMap(pdfSource, pdfStored)
+          : null;
+
       const pdf = buildDatasheetPdf({
         product: product as unknown as DatasheetProduct,
         footer: FIXED_FOOTER,
         logo,
         productImage,
+        translationOverride: pdfOverride,
       });
 
       const filename = `${(product.productName || "Unbenanntes Produkt").replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '_')}.pdf`;
@@ -203,10 +269,21 @@ export default function ProductView() {
   // with a bold label.
   const firstTechRowIndex = technicalDataRows.findIndex(r => ((r?.label as string) || "").trim() !== "");
 
-  const descriptionSections: DescriptionSection[] = Array.isArray(product.descriptionSections) 
+  const descriptionSections: DescriptionSection[] = Array.isArray(product.descriptionSections)
     ? (product.descriptionSections as DescriptionSection[]).filter(s => s && typeof s === 'object')
     : [];
-  
+
+  // Gespeicherte DeepL-Übersetzung (falls aktuell) → Nachschlage-Tabelle für die Anzeige/PDF.
+  const sourceContent = toContent(product);
+  const storedTranslation = (product.translations as any)?.[product.language];
+  const translationFresh =
+    product.language !== "de" &&
+    storedTranslation &&
+    storedTranslation.sourceHash === hashSource(sourceContent);
+  const tOverride: Record<string, string> | null = translationFresh
+    ? buildOverrideMap(sourceContent, storedTranslation)
+    : null;
+
   // Use fixed footer data from constants
   const labels = getDatasheetLabels(product.language);
   const locations = FIXED_FOOTER.locations;
@@ -283,8 +360,28 @@ export default function ProductView() {
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
               Link kopieren
             </Button>
-            <Button 
-              onClick={handleDownloadPdf} 
+            {product.language !== "de" && (
+              isTranslating ? (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 px-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Übersetze… (DeepL)
+                </span>
+              ) : translateStatus.data?.enabled ? (
+                <div className="flex items-center gap-2">
+                  {translationFresh && (
+                    <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Automatisch übersetzt mit DeepL${storedTranslation?.translatedAt ? " am " + new Date(storedTranslation.translatedAt).toLocaleDateString("de-DE") : ""}`}>
+                      <Languages className="h-3 w-3" /> Auto-übersetzt
+                    </span>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => { autoTriedRef.current = ""; runTranslation(product); }}>
+                    <Languages className="h-4 w-4 mr-2" /> Neu übersetzen
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-[11px] text-amber-600 px-2" title="DEEPL_API_KEY ist auf dem Server nicht gesetzt">DeepL nicht eingerichtet</span>
+              )
+            )}
+            <Button
+              onClick={handleDownloadPdf}
               size="sm" 
               variant="outline"
               disabled={isGeneratingPdf}
@@ -314,11 +411,11 @@ export default function ProductView() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-700 tracking-wide">
-                {translateTerm(productName, product.language)}
+                {translateTerm(productName, product.language, tOverride)}
               </h1>
               {productSubtitle ? (
                 <h2 className="text-lg md:text-xl text-gray-600 mt-1">
-                  {translateTerm(productSubtitle, product.language)}
+                  {translateTerm(productSubtitle, product.language, tOverride)}
                 </h2>
               ) : null}
             </div>
@@ -372,7 +469,7 @@ export default function ProductView() {
                 <div key={index}>
                   {title ? (
                     <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
-                      {translateTerm(title, product.language)}
+                      {translateTerm(title, product.language, tOverride)}
                     </h3>
                   ) : null}
                   {filteredItems.length > 0 ? (
@@ -380,7 +477,7 @@ export default function ProductView() {
                       {filteredItems.map((item, itemIndex) => (
                         <li key={itemIndex} className="flex items-start">
                           <span className="mr-2 flex-shrink-0">•</span>
-                          <span className="flex-1 whitespace-pre-wrap">{translateTerm(item, product.language)}</span>
+                          <span className="flex-1 whitespace-pre-wrap">{translateTerm(item, product.language, tOverride)}</span>
                         </li>
                       ))}
                     </ul>
@@ -409,7 +506,7 @@ export default function ProductView() {
                         className="text-center py-2 px-3 text-gray-600 font-semibold border-b border-gray-200"
                         style={{ width: product.columnWidths && (product.columnWidths as number[])[idx] ? `${(product.columnWidths as number[])[idx]}%` : 'auto' }}
                       >
-                        {translateTerm(col, product.language) || ""}
+                        {translateTerm(col, product.language, tOverride) || ""}
                       </th>
                     ))}
                   </tr>
@@ -426,7 +523,7 @@ export default function ProductView() {
                   return (
                     <tr key={index} className={isFirstRow ? "bg-gray-100" : index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                       <td className={`py-2 px-3 border-b border-gray-100 ${isFirstRow ? "font-bold text-gray-900" : "text-gray-700"}`}>
-                        {translateTerm(label, product.language)}
+                        {translateTerm(label, product.language, tOverride)}
                       </td>
                       {values.map((value, vIdx) => (
                         <td 
@@ -434,7 +531,7 @@ export default function ProductView() {
                           className="py-2 px-3 text-gray-800 text-center border-b border-gray-100"
                           style={{ width: product.columnWidths && (product.columnWidths as number[])[vIdx] ? `${(product.columnWidths as number[])[vIdx]}%` : 'auto' }}
                         >
-                          {translateTerm(value, product.language) || "-"}
+                          {translateTerm(value, product.language, tOverride) || "-"}
                         </td>
                       ))}
                       {/* Fill empty cells if values array is shorter than columns */}

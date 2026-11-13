@@ -59,8 +59,10 @@ export function buildDatasheetPdf(opts: {
   footer: DatasheetFooter;
   logo?: LoadedImage | null;
   productImage?: LoadedImage | null;
+  translationOverride?: Record<string, string> | null;
 }): jsPDF {
   const { product, footer } = opts;
+  const tr = opts.translationOverride ?? null; // gespeicherte DeepL-Übersetzung (Vorrang vor Glossar)
   const labels = getDatasheetLabels(product.language);
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -76,7 +78,7 @@ export function buildDatasheetPdf(opts: {
   pdf.setFont(FONT,"bold");
   pdf.setTextColor(80, 80, 80);
   const productName =
-    translateTerm(product.productName, product.language) || "Unbenanntes Produkt";
+    translateTerm(product.productName, product.language, tr) || "Unbenanntes Produkt";
   const titleWidth = pageWidth - 2 * margin - 60; // Leave space for logo
   const titleLines = pdf.splitTextToSize(productName, titleWidth);
   pdf.text(titleLines, margin, margin + 7);
@@ -87,7 +89,7 @@ export function buildDatasheetPdf(opts: {
     pdf.setFont(FONT,"normal");
     pdf.setTextColor(100, 100, 100);
     pdf.text(
-      translateTerm(product.productSubtitle, product.language),
+      translateTerm(product.productSubtitle, product.language, tr),
       margin,
       margin + 16
     );
@@ -192,7 +194,7 @@ export function buildDatasheetPdf(opts: {
       pdf.setFont(FONT,"bold");
       pdf.setTextColor(120, 120, 120);
       pdf.setCharSpace(0.15);
-      pdf.text(translateTerm(section.title, product.language), descX, descY);
+      pdf.text(translateTerm(section.title, product.language, tr), descX, descY);
       pdf.setCharSpace(0);
       descY += 4;
     }
@@ -208,7 +210,7 @@ export function buildDatasheetPdf(opts: {
       const bulletWidth = 3;
       const textX = descX + bulletWidth;
       const maxWidth = descMaxWidth - bulletWidth;
-      const manualLines = translateTerm(item, product.language).split("\n");
+      const manualLines = translateTerm(item, product.language, tr).split("\n");
       pdf.text("•", descX, descY);
       for (let lineIdx = 0; lineIdx < manualLines.length; lineIdx++) {
         const wrappedLines = pdf.splitTextToSize(manualLines[lineIdx], maxWidth);
@@ -376,7 +378,7 @@ export function buildDatasheetPdf(opts: {
       for (let i = 0; i < technicalDataColumns.length; i++) {
         const colWidth = dataColWidths[i];
         pdf.text(
-          translateTerm(technicalDataColumns[i] || "", product.language),
+          translateTerm(technicalDataColumns[i] || "", product.language, tr),
           colX + colWidth / 2,
           y,
           { align: "center" }
@@ -419,7 +421,7 @@ export function buildDatasheetPdf(opts: {
       pdf.setTextColor(60, 60, 60);
       // First-row label is bold; values and all other labels stay normal.
       pdf.setFont(FONT, visibleIndex === 0 ? "bold" : "normal");
-      pdf.text(translateTerm(row.label, product.language), margin + 2, y);
+      pdf.text(translateTerm(row.label, product.language, tr), margin + 2, y);
       pdf.setFont(FONT, "normal");
 
       const values = Array.isArray(row.values) ? row.values : [];
@@ -431,7 +433,7 @@ export function buildDatasheetPdf(opts: {
         const value = values[j] || "-";
         const colWidth = dataColWidths[j] || valueColWidth;
         pdf.text(
-          translateTerm(value, product.language),
+          translateTerm(value, product.language, tr),
           colX + colWidth / 2,
           y,
           { align: "center" }

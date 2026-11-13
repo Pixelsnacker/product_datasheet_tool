@@ -12,4 +12,8 @@ export const ENV = {
   // Absolute base URL of the app, used to build absolute image URLs so the PDF
   // generator can load them (e.g. https://your-app.up.railway.app).
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
+
+  // DeepL API-Schlüssel für die automatische Übersetzung (serverseitig, geheim).
+  // Free-Schlüssel enden auf ":fx" und nutzen api-free.deepl.com.
+  deeplApiKey: process.env.DEEPL_API_KEY ?? "",
 };

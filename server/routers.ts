@@ -7,6 +7,8 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { generateProductPDF } from "./pdfGenerator";
+import { deeplTranslate } from "./deepl";
+import { ENV } from "./_core/env";
 
 // Schema definitions
 const descriptionSectionSchema = z.object({
@@ -31,6 +33,22 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  // Automatische Übersetzung über DeepL (Schlüssel bleibt serverseitig).
+  translate: router({
+    // Ist DeepL eingerichtet? (Steuert, ob der "Automatisch übersetzen"-Knopf aktiv ist.)
+    status: publicProcedure.query(() => ({ enabled: !!ENV.deeplApiKey })),
+    // Übersetzt eine Liste von Texten aus dem Deutschen in die Zielsprache.
+    deepl: protectedProcedure
+      .input(z.object({
+        texts: z.array(z.string()).max(2000),
+        targetLang: z.enum(["en", "pl", "es"]),
+      }))
+      .mutation(async ({ input }) => {
+        const translations = await deeplTranslate(input.texts, input.targetLang);
+        return { translations };
+      }),
   }),
 
   products: router({
@@ -140,6 +158,32 @@ export const appRouter = router({
         
         const { id, ...data } = input;
         await db.updateProduct(id, data);
+        return { success: true };
+      }),
+
+    // Automatisch erzeugte Übersetzung für eine Sprache speichern.
+    setTranslation: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        lang: z.enum(["en", "pl", "es"]),
+        content: z.object({
+          productName: z.string().optional(),
+          productSubtitle: z.string().optional(),
+          descriptionSections: z.array(descriptionSectionSchema).optional(),
+          technicalDataColumns: z.array(z.string()).optional(),
+          technicalDataRows: z.array(technicalDataRowSchema).optional(),
+          translatedAt: z.string().optional(),
+          sourceHash: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const product = await db.getProductById(input.id);
+        if (!product || product.userId !== ctx.user.id) {
+          throw new Error("Product not found or unauthorized");
+        }
+        const translations = { ...((product.translations as Record<string, unknown>) || {}) };
+        translations[input.lang] = input.content;
+        await db.updateProduct(input.id, { translations: translations as any });
         return { success: true };
       }),
 

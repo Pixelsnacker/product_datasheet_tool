@@ -56,6 +56,19 @@ export const products = mysqlTable("products", {
   
   // Language for PDF output: 'de' = German, 'en' = English
   language: varchar("language", { length: 5 }).default("de").notNull(),
+
+  // Automatisch erzeugte Übersetzungen je Zielsprache (Deutsch bleibt das Original).
+  // Schlüssel = Sprachcode ("en"/"pl"/"es"). sourceHash erkennt veralteten Stand,
+  // wenn der deutsche Quelltext nachträglich geändert wurde.
+  translations: json("translations").$type<Record<string, {
+    productName?: string;
+    productSubtitle?: string;
+    descriptionSections?: Array<{ title: string; items: string[] }>;
+    technicalDataColumns?: string[];
+    technicalDataRows?: Array<{ label: string; values: string[] }>;
+    translatedAt?: string;
+    sourceHash?: string;
+  }>>(),
   
   // Footer info - only document number is editable, rest is fixed
   documentNumber: varchar("documentNumber", { length: 100 }),
